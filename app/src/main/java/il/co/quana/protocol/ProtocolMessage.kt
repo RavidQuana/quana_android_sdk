@@ -1,9 +1,12 @@
 package il.co.quana.protocol
 
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.experimental.xor
 
 val START_IDENTIFIER = byteArrayOf(0x51, 0x75)
+
+val ProtocolByteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN
 
 private val MAX_BUFFER_LENGTH = 150 //Base on ble packetSize
 
@@ -23,7 +26,8 @@ enum class ProtocolOpcode(val value: UByte) {
     ChangeToFirwareUpgrade(0x07u),
     TakeFirmwareChunk(0x08u),
     CheckFirmwareChunkSaved(0x09u),
-    Reset(0x0Au);
+    Reset(0x0Au),
+    GetScanResults(0x0Bu);
 
     companion object {
         fun fromValue(value: UByte) = values().firstOrNull { it.value == value }
@@ -32,7 +36,7 @@ enum class ProtocolOpcode(val value: UByte) {
 }
 
 @ExperimentalUnsignedTypes
-sealed class ProtocolMessages(
+sealed class ProtocolMessage(
     val id: UShort,
     val opcode: ProtocolOpcode,
     private val data: ByteArray
@@ -51,13 +55,14 @@ sealed class ProtocolMessages(
             return computeCRC(byteArray, 0, byteArray.size - 2) == byteArray[byteArray.size - 1]
         }
 
-        fun parseReply(byteArray: ByteArray): ProtocolMessages {
+        fun parseReply(byteArray: ByteArray): ProtocolMessage {
             if (!validateCRC(byteArray)) {
                 throw ProtocolException("Invalid CRC")
             }
 
 
             val byteBuffer = ByteBuffer.wrap(byteArray)
+            byteBuffer.order(ProtocolByteOrder)
 
             byteBuffer.position(START_IDENTIFIER.size) // Skipping START_IDENTIFIER for now
 
@@ -73,6 +78,10 @@ sealed class ProtocolMessages(
                         messageId,
                         data
                     )
+                    ProtocolOpcode.StartScan -> StartScanReply(
+                        messageId,
+                        data
+                    )
                     else -> throw ProtocolException("Unsupported opcode $opcode")
                 }
 
@@ -82,6 +91,7 @@ sealed class ProtocolMessages(
 
     fun toByteArray(): ByteArray {
         val buffer = ByteBuffer.allocate(size())
+            .order(ProtocolByteOrder)
             .put(START_IDENTIFIER)
             .putShort(id.toShort())
             .put(opcode.value.toByte())
@@ -102,40 +112,54 @@ sealed class ProtocolMessages(
                 data.size +
                 Byte.SIZE_BYTES //CRC
 
-}
+    abstract class BaseReply(id: UShort, opcode: ProtocolOpcode) :
+        ProtocolMessage(id, opcode, byteArrayOf()) {
 
-@ExperimentalUnsignedTypes
-class SetConfigurationParameter(
-    id: UShort,
-    parameterCode: UByte,
-    parameterValues: ByteArray
-) :
-    ProtocolMessages(
-        id,
-        ProtocolOpcode.SetConfigurationParameter,
-        assembleData(parameterCode, parameterValues)
-    ) {
-    companion object {
-        private fun assembleData(parameterCode: UByte, parameterValues: ByteArray): ByteArray {
-            return ByteBuffer.allocate(
-                parameterValues.size +
-                        Byte.SIZE_BYTES +
-                        Byte.SIZE_BYTES
-            )
-                .put(parameterCode.toByte())
-                .put(parameterValues.size.toByte())
-                .put(parameterValues)
-                .safeArray()
+        abstract val ack: UByte
+    }
+
+    abstract class SimpleReply(id: UShort, opcode: ProtocolOpcode, data: ByteArray) :
+        BaseReply(id, opcode) {
+        override val ack = data[0].toUByte()
+    }
+
+    class SetConfigurationParameter(
+        id: UShort,
+        parameterCode: UByte,
+        parameterValues: ByteArray
+    ) :
+        ProtocolMessage(
+            id,
+            ProtocolOpcode.SetConfigurationParameter,
+            assembleData(parameterCode, parameterValues)
+        ) {
+        companion object {
+            private fun assembleData(parameterCode: UByte, parameterValues: ByteArray): ByteArray {
+                return ByteBuffer.allocate(
+                    parameterValues.size +
+                            Byte.SIZE_BYTES +
+                            Byte.SIZE_BYTES
+                )
+                    .order(ProtocolByteOrder)
+                    .put(parameterCode.toByte())
+                    .put(parameterValues.size.toByte())
+                    .put(parameterValues)
+                    .safeArray()
+            }
         }
     }
-}
 
-@ExperimentalUnsignedTypes
-class SetConfigurationParameterReply(id: UShort, data: ByteArray) :
-    ProtocolMessages(id, ProtocolOpcode.SetConfigurationParameter, data) {
+    class SetConfigurationParameterReply(id: UShort, data: ByteArray) :
+        BaseReply(id, ProtocolOpcode.SetConfigurationParameter) {
+        val parameterCode: UByte = data[0].toUByte()
+        override val ack = data[1].toUByte()
+    }
 
-    val parameterCode: UByte = data[0].toUByte()
-    val ack: UByte = data[1].toUByte()
+    class StartScan(id: UShort) :
+        ProtocolMessage(id, ProtocolOpcode.StartScan, byteArrayOf())
+
+    class StartScanReply(id: UShort, data: ByteArray) :
+        SimpleReply(id, ProtocolOpcode.StartScan, data)
 }
 
 

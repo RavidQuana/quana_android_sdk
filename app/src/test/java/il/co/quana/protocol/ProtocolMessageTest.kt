@@ -3,9 +3,10 @@ package il.co.quana.protocol
 import org.junit.Test
 import kotlin.experimental.and
 import kotlin.experimental.xor
+import il.co.quana.protocol.ProtocolMessage.*
 
 @ExperimentalUnsignedTypes
-class ProtocolMessagesTest {
+class ProtocolMessageTest {
 
 
     @ExperimentalUnsignedTypes
@@ -23,6 +24,8 @@ class ProtocolMessagesTest {
                 ProtocolOpcode.GetStatus -> {
                 }
                 ProtocolOpcode.StartScan -> {
+                    test_StartScan()
+                    test_SimpleReply(ProtocolOpcode.StartScan)
                 }
                 ProtocolOpcode.QuitScan -> {
                 }
@@ -35,6 +38,8 @@ class ProtocolMessagesTest {
                 ProtocolOpcode.CheckFirmwareChunkSaved -> {
                 }
                 ProtocolOpcode.Reset -> {
+                }
+                ProtocolOpcode.GetScanResults -> {
                 }
             }
         }
@@ -56,8 +61,8 @@ fun test_SetConfigurationParameter() {
         byteArrayOf(
             START_IDENTIFIER[0],
             START_IDENTIFIER[1],
-            id.firstByte(),
-            id.secondByte(),
+            id.firstByteLittleEndian(),
+            id.secondByteLittleEndian(),
             ProtocolOpcode.SetConfigurationParameter.value.toByte(),
             (values.size + 2).toByte(), //Without CRC
             parameterCode.toByte(),
@@ -72,13 +77,13 @@ fun test_SetConfigurationParameter() {
 fun test_SetConfigurationParameterReply() {
     val id: UShort = 32768u
     val parameterCode: UByte = 255u
-    val reply = ProtocolMessages.parseReply(
+    val reply = ProtocolMessage.parseReply(
         withCRC(
             byteArrayOf(
                 START_IDENTIFIER[0],
                 START_IDENTIFIER[1],
-                id.firstByte(),
-                id.secondByte(),
+                id.firstByteLittleEndian(),
+                id.secondByteLittleEndian(),
                 ProtocolOpcode.SetConfigurationParameter.value.toByte(),
                 2,
                 parameterCode.toByte(),
@@ -95,10 +100,58 @@ fun test_SetConfigurationParameterReply() {
 }
 
 @ExperimentalUnsignedTypes
-fun UShort.firstByte() = (this.toInt() ushr 8).and(0xFF).toByte()
+fun test_StartScan() {
+    val id: UShort = 32768u
+
+    val message = StartScan(id)
+
+    val messageBytes = message.toByteArray()
+    validateCRC(messageBytes)
+
+    val expectedBytes = withCRC(
+        byteArrayOf(
+            START_IDENTIFIER[0],
+            START_IDENTIFIER[1],
+            id.firstByteLittleEndian(),
+            id.secondByteLittleEndian(),
+            ProtocolOpcode.StartScan.value.toByte(),
+            0.toByte(), //Without CRC
+            0
+        )
+    )
+
+    assert(expectedBytes.contentEquals(messageBytes))
+}
 
 @ExperimentalUnsignedTypes
-fun UShort.secondByte() = this.toShort().and(0xFF).toByte()
+fun test_SimpleReply(opcode: ProtocolOpcode) {
+    val id: UShort = 32768u
+    val reply = ProtocolMessage.parseReply(
+        withCRC(
+            byteArrayOf(
+                START_IDENTIFIER[0],
+                START_IDENTIFIER[1],
+                id.firstByteLittleEndian(),
+                id.secondByteLittleEndian(),
+                opcode.value.toByte(),
+                1.toByte(),
+                ACK.toByte(),
+                0
+            )
+        )
+    ) as SimpleReply
+
+    assert(reply.id == id)
+    assert(reply.opcode == opcode)
+    assert(reply.ack == ACK)
+}
+
+
+@ExperimentalUnsignedTypes
+fun UShort.secondByteLittleEndian() = (this.toInt() ushr 8).and(0xFF).toByte()
+
+@ExperimentalUnsignedTypes
+fun UShort.firstByteLittleEndian() = this.toShort().and(0xFF).toByte()
 
 fun withCRC(byteArray: ByteArray): ByteArray {
     byteArray[byteArray.size - 1] = computeCRC(byteArray, 0, byteArray.size - 2)
