@@ -20,5 +20,6 @@ class QuanaApplication : Application() {
         val consoleTree = ConsoleTree.Builder()
             .build()
         Timber.plant(consoleTree)
+        Timber.plant(Timber.DebugTree())
     }
 }
