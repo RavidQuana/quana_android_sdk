@@ -112,6 +112,10 @@ sealed class ProtocolMessage(
                 data.size +
                 Byte.SIZE_BYTES //CRC
 
+    override fun toString(): String {
+        return "${this.javaClass.simpleName} [id=$id; dataSize=${data.size}]"
+    }
+
     abstract class BaseReply(id: UShort, opcode: ProtocolOpcode) :
         ProtocolMessage(id, opcode, byteArrayOf()) {
 

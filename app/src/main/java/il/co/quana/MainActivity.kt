@@ -6,6 +6,13 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import androidx.appcompat.app.AppCompatActivity
+import com.polidea.rxandroidble2.RxBleClient
+import com.polidea.rxandroidble2.RxBleConnection
+import com.polidea.rxandroidble2.RxBleDevice
+import com.polidea.rxandroidble2.scan.ScanFilter
+import com.polidea.rxandroidble2.scan.ScanSettings
+import il.co.quana.protocol.ProtocolMessage
+import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_main.*
 import timber.log.Timber
 import java.util.*
@@ -17,6 +24,10 @@ private const val CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f
 
 
 class MainActivity : AppCompatActivity() {
+
+    private val compositeDisposable = CompositeDisposable()
+
+    private lateinit var rxBleClient: RxBleClient
 
     private lateinit var bluetoothManager: BluetoothManager
     private lateinit var bluetoothServer: BluetoothGattServer
@@ -104,29 +115,117 @@ class MainActivity : AppCompatActivity() {
 
     private fun scanBleDevices() {
 
-        if (scanning) {
-            return
-        }
+        rxBleClient = RxBleClient.create(applicationContext)
 
-        scanning = true
+//        rxBleClient.bondedDevices.let {
+//            Timber.i("${it.size} bonded devices")
+//            it.forEach { device ->
+//                Timber.i("Bonded device ${device.name}")
+//            }
+//        }
 
-        bluetoothManager.adapter.startLeScan(object : BluetoothAdapter.LeScanCallback {
-            override fun onLeScan(device: BluetoothDevice, rssi: Int, scanRecord: ByteArray?) {
-                if (device.address.equals(ADDRESS, true)) {
-                    Timber.i("Device found: ${device.name}")
-
-                    if (scanning) {
-                        connectToDevice(device)
-                    }
-
-                    bluetoothManager.adapter.stopLeScan(this)
-                    scanning = false
-                }
+        val scanSubscription = rxBleClient.scanBleDevices(
+            ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                .build(),
+            ScanFilter.Builder()
+                .setDeviceAddress("80:E1:26:00:6A:8B")
+                .build()
+        )
+            .doOnSubscribe {
+                Timber.d("Scanning for BLE devices...")
             }
-        })
+            .take(1)
+            .subscribe(
+                { scanResult ->
+                    Timber.d("BLE Device found: [${scanResult.bleDevice.macAddress}] ${scanResult.bleDevice.name}")
+                    scanResult.scanRecord.serviceUuids?.forEach {
+                        Timber.d("UUID: [$it]")
+                    }
+                    connectToDevice(scanResult.bleDevice)
+
+//                    scanResult.bleDevice.observeConnectionStateChanges()
+//                        .subscribe { state ->
+//                            Timber.d("State = %s", state)
+//                        }.let {
+//                            compositeDisposable.add(it)
+//                        }
+
+                },
+                { throwable ->
+                    Timber.e(throwable)
+                }
+            )
+
+        compositeDisposable.add(scanSubscription)
     }
 
-    private fun connectToDevice(device: BluetoothDevice) {
+    private fun connectToDevice(device: RxBleDevice) {
+
+        device.observeConnectionStateChanges()
+            .subscribe { state ->
+                Timber.d("State = %s", state)
+            }.let {
+                compositeDisposable.add(it)
+            }
+
+
+        bluetoothDevice = device.bluetoothDevice
+
+        device.establishConnection(false)
+            .subscribe(
+                { connection ->
+                    handleConnection(connection)
+                },
+                { throwable ->
+                    Timber.e(throwable)
+                }
+            ).let {
+                compositeDisposable.add(it)
+            }
+    }
+
+    private fun handleConnection(connection: RxBleConnection) {
+        connection.discoverServices()
+            .flatMap { services -> services.getService(SERVICE_UUID.toUUID()) }
+            .map { service -> service.getCharacteristic(CHARACTERISTIC_UUID.toUUID()) }
+            .subscribe({ characteristic ->
+                handleCharacteristic(connection, characteristic)
+            },
+                { throwable ->
+                    Timber.e(throwable)
+                }
+            )
+            .let {
+                compositeDisposable.add(it)
+            }
+    }
+
+    private fun handleCharacteristic(
+        connection: RxBleConnection,
+        characteristic: BluetoothGattCharacteristic
+    ) {
+        val descriptor = characteristic.getDescriptor(CLIENT_CHARACTERISTIC_CONFIG.toUUID())
+        connection.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+        connection.setupNotification(characteristic)
+            .flatMap { notificationObservable -> notificationObservable }
+            .subscribe(
+                { bytes ->
+                    Timber.i("${bytes.size} bytes received")
+                    val message = ProtocolMessage.parseReply(bytes)
+                    Timber.i("$message")
+
+                },
+                { throwable ->
+                    Timber.e(throwable)
+                }
+            ).let {
+                compositeDisposable.add(it)
+            }
+    }
+
+    private fun _connectToDevice(device: BluetoothDevice) {
         bluetoothDevice = device
         bluetoothGatt = device.connectGatt(applicationContext, false, object :
             BluetoothGattCallback() {
@@ -172,8 +271,10 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private var messageId = 0u
+
     fun buttonPuuushed() {
-        bluetoothServerCharacteristic.value = TmpTmp.notifyConnectedDevices("1")
+        bluetoothServerCharacteristic.value = ProtocolMessage.StartScan(messageId++.toUShort()).toByteArray()  //TmpTmp.notifyConnectedDevices("1")
         bluetoothServer.notifyCharacteristicChanged(
             bluetoothDevice,
             bluetoothServerCharacteristic,
@@ -181,3 +282,5 @@ class MainActivity : AppCompatActivity() {
         )
     }
 }
+
+fun String.toUUID() = UUID.fromString(this)
