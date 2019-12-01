@@ -2,6 +2,7 @@ package il.co.quana
 
 import android.bluetooth.*
 import android.content.Context
+import com.polidea.rxandroidble2.RxBleDevice
 import il.co.quana.protocol.ProtocolMessage
 import io.reactivex.disposables.Disposable
 import timber.log.Timber
@@ -63,6 +64,9 @@ class QuanaBluetoothServer(private val context: Context) {
         service.addCharacteristic(bluetoothServerCharacteristic)
         bluetoothServer.addService(service)
     }
+
+    fun write(message: ProtocolMessage, device: RxBleDevice?) =
+        write(message, device?.bluetoothDevice)
 
     fun write(message: ProtocolMessage, device: BluetoothDevice?) {
 

@@ -6,5 +6,11 @@ enum class DeviceStatus(val value: Byte) {
     scanningComplete(0x02),
     calibrating(0x03),
     fwUpgrade(0x04),
-    failure(0x05)
+    failure(0x05);
+
+    companion object {
+
+        fun fromValue(value: Byte) =
+            DeviceStatus.values().firstOrNull { it.value == value } ?: failure
+    }
 }

@@ -31,7 +31,7 @@ class ProtocolMessageTest {
                 }
                 ProtocolOpcode.GetSample -> {
                 }
-                ProtocolOpcode.ChangeToFirwareUpgrade -> {
+                ProtocolOpcode.ChangeToFirmwareUpgrade -> {
                 }
                 ProtocolOpcode.TakeFirmwareChunk -> {
                 }

@@ -14,7 +14,6 @@ private val MAX_BUFFER_LENGTH = 150 //Base on ble packetSize
 val ACK: UByte = 0u //Base on ble packetSize
 
 @ExperimentalUnsignedTypes
-@Suppress("EXPERIMENTAL_UNSIGNED_LITERALS")
 enum class ProtocolOpcode(val value: UByte) {
 
     SetConfigurationParameter(0x01u),
@@ -23,7 +22,7 @@ enum class ProtocolOpcode(val value: UByte) {
     StartScan(0x04u),
     QuitScan(0x05u),
     GetSample(0x06u),
-    ChangeToFirwareUpgrade(0x07u),
+    ChangeToFirmwareUpgrade(0x07u),
     TakeFirmwareChunk(0x08u),
     CheckFirmwareChunkSaved(0x09u),
     Reset(0x0Au),
@@ -32,7 +31,6 @@ enum class ProtocolOpcode(val value: UByte) {
     companion object {
         fun fromValue(value: UByte) = values().firstOrNull { it.value == value }
     }
-
 }
 
 @ExperimentalUnsignedTypes
@@ -82,6 +80,14 @@ sealed class ProtocolMessage(
                         messageId,
                         data
                     )
+                    ProtocolOpcode.GetConfigurationParameter -> GetConfigurationParameterReply(
+                        messageId,
+                        data
+                    )
+                    ProtocolOpcode.GetStatus -> GetDeviceStatusReply(
+                        messageId,
+                        data
+                    )
                     else -> throw ProtocolException("Unsupported opcode $opcode")
                 }
 
@@ -127,6 +133,16 @@ sealed class ProtocolMessage(
         override val ack = data[0].toUByte()
     }
 
+    //----------------------------------------------------------------------------------------------
+
+    class StartScan(id: UShort) :
+        ProtocolMessage(id, ProtocolOpcode.StartScan, byteArrayOf())
+
+    class StartScanReply(id: UShort, data: ByteArray) :
+        SimpleReply(id, ProtocolOpcode.StartScan, data)
+
+    //----------------------------------------------------------------------------------------------
+
     class SetConfigurationParameter(
         id: UShort,
         parameterCode: UByte,
@@ -159,11 +175,44 @@ sealed class ProtocolMessage(
         override val ack = data[1].toUByte()
     }
 
-    class StartScan(id: UShort) :
-        ProtocolMessage(id, ProtocolOpcode.StartScan, byteArrayOf())
+    //----------------------------------------------------------------------------------------------
 
-    class StartScanReply(id: UShort, data: ByteArray) :
-        SimpleReply(id, ProtocolOpcode.StartScan, data)
+    class GetConfigurationParameter(id: UShort, parameterCode: UByte) : ProtocolMessage(
+        id, ProtocolOpcode.GetConfigurationParameter, byteArrayOf(parameterCode.toByte())
+    )
+
+    class GetConfigurationParameterReply(id: UShort, data: ByteArray) :
+        BaseReply(id, ProtocolOpcode.GetConfigurationParameter) {
+
+        val parameterCode: UByte
+        val parameterValues: ByteArray
+        override val ack: UByte
+
+        init {
+            val buffer = ByteBuffer.wrap(data)
+                .order(ProtocolByteOrder)
+
+            parameterCode = buffer.get().toUByte()
+            val length = buffer.get()
+            parameterValues = ByteArray(length.toInt())
+            buffer.get(parameterValues)
+            ack = buffer.get().toUByte()
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------
+
+    class GetDeviceStatus(id: UShort) :
+        ProtocolMessage(id, ProtocolOpcode.GetStatus, byteArrayOf())
+
+    class GetDeviceStatusReply(id: UShort, data: ByteArray) :
+        BaseReply(id, ProtocolOpcode.GetStatus) {
+        val deviceStatus: DeviceStatus = DeviceStatus.fromValue(data[0])
+        override val ack = data[1].toUByte()
+    }
+
+    //----------------------------------------------------------------------------------------------
+
 }
 
 
@@ -177,4 +226,7 @@ private fun ByteBuffer.safeArray() = if (hasArray()) {
 
 private fun ByteBuffer.writtenArray() = safeArray().sliceArray(0 until position())
 
-class ProtocolException(message: String) : Exception(message)
+class ProtocolException @JvmOverloads constructor(
+    override val message: String = "Unknown exception",
+    override val cause: Throwable? = null
+) : Exception()

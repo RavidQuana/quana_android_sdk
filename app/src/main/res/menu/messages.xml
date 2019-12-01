@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:title="StartScan" android:id="@+id/startScan" />
+    <item android:title="SetConfigurationParameter" android:id="@+id/setConfigurationParameter" />
+    <item android:title="GetConfigurationParameter" android:id="@+id/getConfigurationParameter" />
+    <item android:title="GetDeviceStatus" android:id="@+id/getDeviceStatus" />
+</menu>
