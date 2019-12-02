@@ -126,6 +126,7 @@ class MainActivity : AppCompatActivity() {
             .listener { dialog, which ->
                 when (which) {
                     R.id.startScan -> quanaDeviceCommunicator.startScan()
+                    R.id.quitScan -> quanaDeviceCommunicator.quitScan()
                     R.id.setConfigurationParameter -> quanaDeviceCommunicator.setConfigurationParameter(
                         7,
                         byteArrayOf(1, 2, 3, 4, 5)

@@ -7,6 +7,11 @@ import timber.log.Timber
 import java.util.concurrent.atomic.AtomicInteger
 
 
+private interface ProtocolResponseHandler<T : ProtocolMessage.BaseReply> {
+    fun handleResponse(response: T)
+}
+
+
 @ExperimentalUnsignedTypes
 class QuanaDeviceCommunicator(
     private val server: QuanaBluetoothServer,
@@ -19,6 +24,7 @@ class QuanaDeviceCommunicator(
     }
 
     private var pendingRequest: ProtocolMessage? = null
+    private var pendingResponseHandler: ((ProtocolMessage.BaseReply) -> Unit)? = null
 
     private val messageId = AtomicInteger(0)
 
@@ -63,9 +69,16 @@ class QuanaDeviceCommunicator(
         } ?: true
     }
 
-    private fun sendMessage(factory: ((messageId: UShort) -> ProtocolMessage)) {
-        val message = factory(messageId.getAndIncrement().toUShort())
+    @Suppress("UNCHECKED_CAST")
+    private fun <T : ProtocolMessage.BaseReply> sendMessage(
+        messageFactory: ((messageId: UShort) -> ProtocolMessage),
+        responseHandler: ProtocolResponseHandler<T>
+    ) {
+        val message = messageFactory(messageId.getAndIncrement().toUShort())
         pendingRequest = message
+        pendingResponseHandler = {
+            responseHandler.handleResponse(it as T)
+        }
         server.write(
             message,
             client.device
@@ -73,10 +86,10 @@ class QuanaDeviceCommunicator(
     }
 
     private fun handleValidResponse(response: ProtocolMessage.BaseReply) {
-        this.pendingRequest = null
         if (response.ack == ACK) {
-            when (response) {
-            }
+            this.pendingRequest = null
+            this.pendingResponseHandler?.invoke(response)
+            this.pendingResponseHandler = null
         } else {
             handleNonACKResponse(response)
         }
@@ -86,15 +99,30 @@ class QuanaDeviceCommunicator(
 
     }
 
-
     fun startScan() {
         if (!assertIdle()) {
             return
         }
 
-        sendMessage { id ->
+        sendMessage({ id ->
             ProtocolMessage.StartScan(id.toUShort())
+        }, object : ProtocolResponseHandler<ProtocolMessage.StartScanReply> {
+            override fun handleResponse(response: ProtocolMessage.StartScanReply) {
+            }
+        })
+    }
+
+    fun quitScan() {
+        if (!assertIdle()) {
+            return
         }
+
+        sendMessage({ id ->
+            ProtocolMessage.QuitScan(id.toUShort())
+        }, object : ProtocolResponseHandler<ProtocolMessage.QuitScanReply> {
+            override fun handleResponse(response: ProtocolMessage.QuitScanReply) {
+            }
+        })
     }
 
     fun setConfigurationParameter(parameterCode: Byte, values: ByteArray) {
@@ -102,13 +130,16 @@ class QuanaDeviceCommunicator(
             return
         }
 
-        sendMessage { id ->
+        sendMessage({ id ->
             ProtocolMessage.SetConfigurationParameter(
                 id.toUShort(),
                 parameterCode.toUByte(),
                 values
             )
-        }
+        }, object : ProtocolResponseHandler<ProtocolMessage.SetConfigurationParameterReply> {
+            override fun handleResponse(response: ProtocolMessage.SetConfigurationParameterReply) {
+            }
+        })
     }
 
     fun getConfigurationParameter(parameterCode: Byte) {
@@ -116,12 +147,15 @@ class QuanaDeviceCommunicator(
             return
         }
 
-        sendMessage { id ->
+        sendMessage({ id ->
             ProtocolMessage.GetConfigurationParameter(
                 id.toUShort(),
                 parameterCode.toUByte()
             )
-        }
+        }, object : ProtocolResponseHandler<ProtocolMessage.GetConfigurationParameterReply> {
+            override fun handleResponse(response: ProtocolMessage.GetConfigurationParameterReply) {
+            }
+        })
     }
 
     fun getDeviceStatus() {
@@ -129,10 +163,13 @@ class QuanaDeviceCommunicator(
             return
         }
 
-        sendMessage { id ->
+        sendMessage({ id ->
             ProtocolMessage.GetDeviceStatus(
                 id.toUShort()
             )
-        }
+        }, object : ProtocolResponseHandler<ProtocolMessage.GetDeviceStatusReply> {
+            override fun handleResponse(response: ProtocolMessage.GetDeviceStatusReply) {
+            }
+        })
     }
 }

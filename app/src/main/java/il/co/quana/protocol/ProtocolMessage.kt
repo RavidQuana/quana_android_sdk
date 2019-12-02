@@ -80,6 +80,10 @@ sealed class ProtocolMessage(
                         messageId,
                         data
                     )
+                    ProtocolOpcode.QuitScan -> QuitScanReply(
+                        messageId,
+                        data
+                    )
                     ProtocolOpcode.GetConfigurationParameter -> GetConfigurationParameterReply(
                         messageId,
                         data
@@ -140,6 +144,14 @@ sealed class ProtocolMessage(
 
     class StartScanReply(id: UShort, data: ByteArray) :
         SimpleReply(id, ProtocolOpcode.StartScan, data)
+
+    //----------------------------------------------------------------------------------------------
+
+    class QuitScan(id: UShort) :
+        ProtocolMessage(id, ProtocolOpcode.QuitScan, byteArrayOf())
+
+    class QuitScanReply(id: UShort, data: ByteArray) :
+        SimpleReply(id, ProtocolOpcode.QuitScan, data)
 
     //----------------------------------------------------------------------------------------------
 
@@ -207,8 +219,82 @@ sealed class ProtocolMessage(
 
     class GetDeviceStatusReply(id: UShort, data: ByteArray) :
         BaseReply(id, ProtocolOpcode.GetStatus) {
-        val deviceStatus: DeviceStatus = DeviceStatus.fromValue(data[0])
+        val deviceStatus: DeviceStatus = DeviceStatus.fromValue(data[0]) ?: throw ProtocolException(
+            "Unknown DeviceStatus[${data[0]}]"
+        )
         override val ack = data[1].toUByte()
+    }
+
+    //----------------------------------------------------------------------------------------------
+
+    class GetSample(id: UShort, sampleId: UShort) : ProtocolMessage(
+        id,
+        ProtocolOpcode.GetSample,
+        ByteBuffer.allocate(UShort.SIZE_BYTES).order(ProtocolByteOrder).putShort(sampleId.toShort()).safeArray()
+    )
+
+    class GetSampleReply(id: UShort, data: ByteArray) :
+        BaseReply(id, ProtocolOpcode.GetSample) {
+
+        val sensorCode: UByte
+        val sampleId: UShort
+        val sampleData: ByteArray
+
+        override val ack: UByte
+
+        init {
+            val buffer = ByteBuffer.wrap(data)
+                .order(ProtocolByteOrder)
+
+            sensorCode = buffer.get().toUByte()
+            sampleId = buffer.getShort().toUShort()
+            val length = buffer.get()
+            sampleData = ByteArray(length.toInt())
+            buffer.get(sampleData)
+            ack = buffer.get().toUByte()
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------
+
+    class GoToFirmwareUpdate(id: UShort) :
+        ProtocolMessage(id, ProtocolOpcode.ChangeToFirmwareUpgrade, byteArrayOf())
+
+    class GoToFirmwareUpdateReply(id: UShort, data: ByteArray) :
+        SimpleReply(id, ProtocolOpcode.ChangeToFirmwareUpgrade, data)
+
+    //----------------------------------------------------------------------------------------------
+
+    class ResetDevice(id: UShort) :
+        ProtocolMessage(id, ProtocolOpcode.Reset, byteArrayOf())
+
+    class ResetDeviceReply(id: UShort, data: ByteArray) :
+        SimpleReply(id, ProtocolOpcode.Reset, data)
+
+    //----------------------------------------------------------------------------------------------
+
+    class GetScanResults(id: UShort) : ProtocolMessage(
+        id, ProtocolOpcode.GetScanResults, byteArrayOf()
+    )
+
+    class GetScanResultsReply(id: UShort, data: ByteArray) :
+        BaseReply(id, ProtocolOpcode.GetScanResults) {
+
+        val scanStatus: ScanStatus
+        val amountOfSamples: UShort
+        override val ack: UByte
+
+        init {
+            val buffer = ByteBuffer.wrap(data)
+                .order(ProtocolByteOrder)
+
+            val scanStatusByte = buffer.get()
+            scanStatus = ScanStatus.fromValue(scanStatusByte)
+                ?: throw ProtocolException("Unknown ScanStatus[$scanStatusByte]")
+            amountOfSamples = buffer.getShort().toUShort()
+
+            ack = buffer.get().toUByte()
+        }
     }
 
     //----------------------------------------------------------------------------------------------
