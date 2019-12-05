@@ -15,9 +15,22 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
+        debug {
+            minifyEnabled false
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    signingConfigs {
+        release {
+            // You need to specify either an absolute path or include the
+            // keystore file in the same directory as the build.gradle file.
+            storeFile file("../quana.keystore")
+            storePassword "ZvxeM0tJ@,sdwOsgDHkRtd0D"
+            keyAlias "app"
+            keyPassword "ZvxeM0tJ@,sdwOsgDHkRtd0D"
         }
     }
 }
