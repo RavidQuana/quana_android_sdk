@@ -79,7 +79,7 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
             .flatMap { notificationObservable -> notificationObservable }
             .subscribe(
                 { bytes ->
-                    Timber.i("${bytes.size} bytes received")
+                    Timber.d("${bytes.size} bytes received")
 
                     if (binaryLogEnabled) {
                         Log.d(BINARY_LOG_TAG, "in  << [${bytes.binaryLog()}]")
@@ -87,7 +87,7 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
 
                     val message = ProtocolMessage.parseReply(bytes)
                     callback?.messageReceived(message)
-                    Timber.i("$message")
+                    Timber.d("$message")
 
 
                 },
@@ -122,7 +122,7 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
                 .readCharacteristic(uuid.toUUID())
                 .map { bytes -> String(bytes) }
                 .subscribe({ value ->
-                    Timber.i("${ GattAttributes.lookup(uuid)} = $value")
+                    Timber.d("${ GattAttributes.lookup(uuid)} = $value")
                 },
                     { throwable ->
                         Timber.e(throwable)

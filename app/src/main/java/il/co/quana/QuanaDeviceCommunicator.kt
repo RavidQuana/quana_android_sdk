@@ -1,5 +1,6 @@
 package il.co.quana
 
+import android.content.Context
 import il.co.quana.protocol.ACK
 import il.co.quana.protocol.DeviceStatus
 import il.co.quana.protocol.ProtocolException
@@ -17,6 +18,30 @@ internal val binaryLogEnabled = true
 internal val NON_ACK_RETRY_COUNT = 3
 
 internal fun ByteArray.binaryLog() = this.joinToString(separator = ",")
+
+
+class QuanaDeviceCommunicatorFactory {
+    companion object {
+        fun createQuanaDeviceCommunicator(
+            context: Context,
+            deviceAddress: String
+        ): QuanaDeviceCommunicator {
+            val rxBleClient = DI.rxBleClient(context.applicationContext)
+
+            val quanaBluetoothServer = QuanaBluetoothServer(context.applicationContext)
+            quanaBluetoothServer.open()
+//                .let { compositeDisposable.add(it) }
+
+            val device = rxBleClient.getBleDevice(deviceAddress)
+
+            val quanaBluetoothClient = QuanaBluetoothClient(device)
+            quanaBluetoothClient.connect()
+//                .let { compositeDisposable.add(it) }
+
+            return QuanaDeviceCommunicator(quanaBluetoothServer, quanaBluetoothClient)
+        }
+    }
+}
 
 
 @ExperimentalUnsignedTypes
@@ -41,7 +66,7 @@ class QuanaDeviceCommunicator(
     }
 
     override fun messageError(exception: ProtocolException) {
-        Timber.i(exception)
+        Timber.e(exception)
         resetConnection("ProtocolException")
     }
 
@@ -63,7 +88,7 @@ class QuanaDeviceCommunicator(
 
     private fun resetConnection(reason: String?) {
         this.pendingRequest = null
-        Timber.i("Resetting connection [%s]", reason)
+        Timber.d("Resetting connection [%s]", reason)
     }
 
     private fun assertIdle(resetIfNot: Boolean = false): Boolean {
@@ -111,7 +136,7 @@ class QuanaDeviceCommunicator(
     private fun handleNonACKResponse(response: ProtocolMessage.BaseReply) {
         this.pendingRequest?.let { message ->
             if (requestAttemptsCounter.decrementAndGet() > 0) {
-                Timber.i("Non ACK response. Retrying...")
+                Timber.d("Non ACK response. Retrying...")
                 server.write(
                     message,
                     client.device
@@ -205,7 +230,10 @@ class QuanaDeviceCommunicator(
         })
     }
 
-    fun getSample(sampleId: UShort, callback: ((sensorCode: UByte, sampleData: ByteArray) -> Unit)? = null) {
+    fun getSample(
+        sampleId: UShort,
+        callback: ((sensorCode: UByte, sampleData: ByteArray) -> Unit)? = null
+    ) {
         if (!assertIdle()) {
             return
         }
