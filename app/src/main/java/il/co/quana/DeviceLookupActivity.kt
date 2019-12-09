@@ -47,8 +47,8 @@ class DeviceLookupActivity : AppCompatActivity() {
         recyclerView.adapter = adapter
 
         adapter.listener = { scanResult ->
-            Intent(this, MainActivity::class.java).apply {
-                putExtra(MainActivity.EXTRA_DEVICE_MAC_ADDRESS, scanResult.bleDevice.macAddress)
+            Intent(this, DeviceActivity::class.java).apply {
+                putExtra(DeviceActivity.EXTRA_DEVICE_MAC_ADDRESS, scanResult.bleDevice.macAddress)
             }.let {
                 startActivity(it)
             }

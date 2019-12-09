@@ -11,9 +11,6 @@ val ProtocolByteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN
 private val MAX_BUFFER_LENGTH = 150 //Base on ble packetSize
 
 @ExperimentalUnsignedTypes
-val ACK: UByte = 0u //Base on ble packetSize
-
-@ExperimentalUnsignedTypes
 enum class ProtocolOpcode(val value: UByte) {
 
     SetConfigurationParameter(0x01u),

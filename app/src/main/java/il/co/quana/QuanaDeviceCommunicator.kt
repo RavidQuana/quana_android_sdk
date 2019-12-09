@@ -1,10 +1,7 @@
 package il.co.quana
 
 import android.content.Context
-import il.co.quana.protocol.ACK
-import il.co.quana.protocol.DeviceStatus
-import il.co.quana.protocol.ProtocolException
-import il.co.quana.protocol.ProtocolMessage
+import il.co.quana.protocol.*
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -135,14 +132,20 @@ class QuanaDeviceCommunicator(
 
     private fun handleNonACKResponse(response: ProtocolMessage.BaseReply) {
         this.pendingRequest?.let { message ->
-            if (requestAttemptsCounter.decrementAndGet() > 0) {
-                Timber.d("Non ACK response. Retrying...")
-                server.write(
-                    message,
-                    client.device
-                )
+            if (response.ack == ErrorCodes.crcFailure.value) {
+                if (requestAttemptsCounter.decrementAndGet() > 0) {
+                    Timber.d("CRC Failure. Retrying...")
+                    server.write(
+                        message,
+                        client.device
+                    )
+                } else {
+                    resetConnection("Non ACK response")
+                }
             } else {
-                resetConnection("Non ACK response")
+                this.pendingRequest = null
+                this.pendingResponseHandler?.invoke(response)
+                this.pendingResponseHandler = null
             }
         }
     }
@@ -197,7 +200,10 @@ class QuanaDeviceCommunicator(
         })
     }
 
-    fun getConfigurationParameter(parameterCode: Byte, callback: ((ByteArray) -> Unit)? = null) {
+    fun getConfigurationParameter(
+        parameterCode: Byte,
+        callback: ((ByteArray) -> Unit)? = null
+    ) {
         if (!assertIdle()) {
             return
         }

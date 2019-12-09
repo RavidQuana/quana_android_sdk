@@ -4,8 +4,6 @@ import android.os.Bundle
 import android.text.TextUtils
 import androidx.appcompat.app.AppCompatActivity
 import com.cocosw.bottomsheet.BottomSheet
-import com.polidea.rxandroidble2.RxBleClient
-import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_device.*
 import timber.log.Timber
 import java.util.*
@@ -14,14 +12,11 @@ import java.util.*
 //private const val ADDRESS = "80:E1:26:00:6A:8B"
 
 
-class MainActivity : AppCompatActivity() {
+class DeviceActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_DEVICE_MAC_ADDRESS = "EXTRA_DEVICE_MAC_ADDRESS"
     }
-
-    private val compositeDisposable = CompositeDisposable()
-    private lateinit var rxBleClient: RxBleClient
 
     private lateinit var quanaDeviceCommunicator: QuanaDeviceCommunicator
 
@@ -75,7 +70,7 @@ class MainActivity : AppCompatActivity() {
                         0,
                         byteArrayOf(20)
                     ) {
-                        Timber.i("Quit scan result-> $it")
+                        Timber.i("Set configuration parameter-> $it")
                     }
                     R.id.getConfigurationParameter -> quanaDeviceCommunicator.getConfigurationParameter(
                         0
