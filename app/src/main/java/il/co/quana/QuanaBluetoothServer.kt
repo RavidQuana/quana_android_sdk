@@ -2,6 +2,7 @@ package il.co.quana
 
 import android.bluetooth.*
 import android.content.Context
+import android.util.Log
 import com.polidea.rxandroidble2.RxBleDevice
 import il.co.quana.protocol.ProtocolMessage
 import io.reactivex.disposables.Disposable
@@ -70,7 +71,13 @@ class QuanaBluetoothServer(private val context: Context) {
 
     fun write(message: ProtocolMessage, device: BluetoothDevice?) {
 
-        bluetoothServerCharacteristic.value = message.toByteArray()
+        val bytes = message.toByteArray()
+
+        bluetoothServerCharacteristic.value = bytes
+
+        if (binaryLogEnabled) {
+            Log.d(BINARY_LOG_TAG, "out >> [${bytes.binaryLog()}]")
+        }
 
         val targetDevices =
             if (device != null) listOf(device) else bluetoothManager.getConnectedDevices(

@@ -58,7 +58,6 @@ sealed class ProtocolMessage(
                 throw ProtocolException("Invalid CRC")
             }
 
-
             val byteBuffer = ByteBuffer.wrap(byteArray)
             byteBuffer.order(ProtocolByteOrder)
 
@@ -122,14 +121,14 @@ sealed class ProtocolMessage(
                 data.size +
                 Byte.SIZE_BYTES //CRC
 
-    override fun toString(): String {
-        return "${this.javaClass.simpleName} [id=$id; dataSize=${data.size}]"
-    }
+    override fun toString() = "${this.javaClass.simpleName} [id=$id; dataSize=${data.size}]"
 
     abstract class BaseReply(id: UShort, opcode: ProtocolOpcode) :
         ProtocolMessage(id, opcode, byteArrayOf()) {
 
         abstract val ack: UByte
+
+        override fun toString() = "${this.javaClass.simpleName} [id=$id; ack=${ack}]"
     }
 
     abstract class SimpleReply(id: UShort, opcode: ProtocolOpcode, data: ByteArray) :
@@ -157,8 +156,8 @@ sealed class ProtocolMessage(
 
     class SetConfigurationParameter(
         id: UShort,
-        parameterCode: UByte,
-        parameterValues: ByteArray
+        val parameterCode: UByte,
+        val parameterValues: ByteArray
     ) :
         ProtocolMessage(
             id,
@@ -179,6 +178,10 @@ sealed class ProtocolMessage(
                     .safeArray()
             }
         }
+
+        override fun toString() =
+            "${this.javaClass.simpleName} [id=$id; code=${parameterCode}; values=${parameterValues.firstOrNull()}...]"
+
     }
 
     class SetConfigurationParameterReply(id: UShort, data: ByteArray) :
@@ -210,6 +213,9 @@ sealed class ProtocolMessage(
             buffer.get(parameterValues)
             ack = buffer.get().toUByte()
         }
+
+        override fun toString() =
+            "${this.javaClass.simpleName} [id=$id; code=${parameterCode}; values=${parameterValues.firstOrNull()}...]"
     }
 
     //----------------------------------------------------------------------------------------------
@@ -223,6 +229,10 @@ sealed class ProtocolMessage(
             "Unknown DeviceStatus[${data[0]}]"
         )
         override val ack = data[1].toUByte()
+
+        override fun toString() =
+            "${this.javaClass.simpleName} [id=$id; deviceStatus=${deviceStatus}]"
+
     }
 
     //----------------------------------------------------------------------------------------------
@@ -299,6 +309,78 @@ sealed class ProtocolMessage(
 
     //----------------------------------------------------------------------------------------------
 
+    class TakeFirmwareChunk(
+        id: UShort,
+        val chunkId: UInt,
+        val address: UInt,
+        val chunk: ByteArray
+    ) :
+        ProtocolMessage(
+            id,
+            ProtocolOpcode.TakeFirmwareChunk,
+            assembleData(chunkId, address, chunk)
+        ) {
+        companion object {
+            private fun assembleData(chunkId: UInt, address: UInt, chunk: ByteArray): ByteArray {
+                return ByteBuffer.allocate(
+                    chunk.size +
+                            UInt.SIZE_BYTES +
+                            UInt.SIZE_BYTES +
+                            Byte.SIZE_BYTES
+                )
+                    .order(ProtocolByteOrder)
+                    .putInt(chunkId.toInt())
+                    .putInt(address.toInt())
+                    .put(chunk.size.toByte())
+                    .put(chunk)
+                    .safeArray()
+            }
+        }
+
+        override fun toString() =
+            "${this.javaClass.simpleName} [id=$id; chunkId=${chunkId}; address=${address}; chunk=${chunk.firstOrNull()}...]"
+
+    }
+
+    class TakeFirmwareChunkReply(id: UShort, data: ByteArray) :
+        BaseReply(id, ProtocolOpcode.TakeFirmwareChunk) {
+
+        val chankId: UInt
+
+        override val ack: UByte
+
+        init {
+            val buffer = ByteBuffer.wrap(data)
+                .order(ProtocolByteOrder)
+
+            chankId = buffer.getInt().toUInt()
+            ack = buffer.get().toUByte()
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------
+
+    class CheckFirmwareChunk(id: UShort, chankId: UInt) : ProtocolMessage(
+        id,
+        ProtocolOpcode.CheckFirmwareChunkSaved,
+        ByteBuffer.allocate(UShort.SIZE_BYTES).order(ProtocolByteOrder).putInt(chankId.toInt()).safeArray()
+    )
+
+    class CheckFirmwareChunkReply(id: UShort, data: ByteArray) :
+        BaseReply(id, ProtocolOpcode.CheckFirmwareChunkSaved) {
+
+        val chankId: UInt
+
+        override val ack: UByte
+
+        init {
+            val buffer = ByteBuffer.wrap(data)
+                .order(ProtocolByteOrder)
+
+            chankId = buffer.getInt().toUInt()
+            ack = buffer.get().toUByte()
+        }
+    }
 }
 
 

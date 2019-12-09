@@ -128,11 +128,11 @@ class MainActivity : AppCompatActivity() {
                     R.id.startScan -> quanaDeviceCommunicator.startScan()
                     R.id.quitScan -> quanaDeviceCommunicator.quitScan()
                     R.id.setConfigurationParameter -> quanaDeviceCommunicator.setConfigurationParameter(
-                        7,
-                        byteArrayOf(1, 2, 3, 4, 5)
+                        0,
+                        byteArrayOf(20)
                     )
                     R.id.getConfigurationParameter -> quanaDeviceCommunicator.getConfigurationParameter(
-                        7
+                        0
                     )
                     R.id.getDeviceStatus -> quanaDeviceCommunicator.getDeviceStatus()
                 }

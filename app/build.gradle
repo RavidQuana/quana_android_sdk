@@ -53,6 +53,8 @@ dependencies {
     implementation 'com.jraska:console:1.0.0'
     implementation 'com.jraska:console-timber-tree:1.0.0'
 
+    implementation "io.reactivex.rxjava2:rxjava:2.2.8"
+
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'

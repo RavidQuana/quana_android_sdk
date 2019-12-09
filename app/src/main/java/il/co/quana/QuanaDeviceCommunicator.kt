@@ -1,6 +1,7 @@
 package il.co.quana
 
 import il.co.quana.protocol.ACK
+import il.co.quana.protocol.DeviceStatus
 import il.co.quana.protocol.ProtocolException
 import il.co.quana.protocol.ProtocolMessage
 import timber.log.Timber
@@ -10,6 +11,12 @@ import java.util.concurrent.atomic.AtomicInteger
 private interface ProtocolResponseHandler<T : ProtocolMessage.BaseReply> {
     fun handleResponse(response: T)
 }
+
+internal val BINARY_LOG_TAG = "BIN"
+internal val binaryLogEnabled = true
+internal val NON_ACK_RETRY_COUNT = 3
+
+internal fun ByteArray.binaryLog() = this.joinToString(separator = ",")
 
 
 @ExperimentalUnsignedTypes
@@ -25,6 +32,7 @@ class QuanaDeviceCommunicator(
 
     private var pendingRequest: ProtocolMessage? = null
     private var pendingResponseHandler: ((ProtocolMessage.BaseReply) -> Unit)? = null
+    private val requestAttemptsCounter = AtomicInteger()
 
     private val messageId = AtomicInteger(0)
 
@@ -55,7 +63,7 @@ class QuanaDeviceCommunicator(
 
     private fun resetConnection(reason: String?) {
         this.pendingRequest = null
-        Timber.w("Resetting connection [%s]", reason)
+        Timber.i("Resetting connection [%s]", reason)
     }
 
     private fun assertIdle(resetIfNot: Boolean = false): Boolean {
@@ -79,6 +87,7 @@ class QuanaDeviceCommunicator(
         pendingResponseHandler = {
             responseHandler.handleResponse(it as T)
         }
+        requestAttemptsCounter.set(NON_ACK_RETRY_COUNT - 1)
         server.write(
             message,
             client.device
@@ -87,19 +96,33 @@ class QuanaDeviceCommunicator(
 
     private fun handleValidResponse(response: ProtocolMessage.BaseReply) {
         if (response.ack == ACK) {
-            this.pendingRequest = null
-            this.pendingResponseHandler?.invoke(response)
-            this.pendingResponseHandler = null
+            handleACKResponse(response)
         } else {
             handleNonACKResponse(response)
         }
     }
 
-    private fun handleNonACKResponse(response: ProtocolMessage.BaseReply) {
-
+    private fun handleACKResponse(response: ProtocolMessage.BaseReply) {
+        this.pendingRequest = null
+        this.pendingResponseHandler?.invoke(response)
+        this.pendingResponseHandler = null
     }
 
-    fun startScan() {
+    private fun handleNonACKResponse(response: ProtocolMessage.BaseReply) {
+        this.pendingRequest?.let { message ->
+            if (requestAttemptsCounter.decrementAndGet() > 0) {
+                Timber.i("Non ACK response. Retrying...")
+                server.write(
+                    message,
+                    client.device
+                )
+            } else {
+                resetConnection("Non ACK response")
+            }
+        }
+    }
+
+    fun startScan(callback: ((Boolean) -> Unit)? = null) {
         if (!assertIdle()) {
             return
         }
@@ -108,11 +131,12 @@ class QuanaDeviceCommunicator(
             ProtocolMessage.StartScan(id.toUShort())
         }, object : ProtocolResponseHandler<ProtocolMessage.StartScanReply> {
             override fun handleResponse(response: ProtocolMessage.StartScanReply) {
+                callback?.invoke(true)
             }
         })
     }
 
-    fun quitScan() {
+    fun quitScan(callback: ((Boolean) -> Unit)? = null) {
         if (!assertIdle()) {
             return
         }
@@ -121,11 +145,16 @@ class QuanaDeviceCommunicator(
             ProtocolMessage.QuitScan(id.toUShort())
         }, object : ProtocolResponseHandler<ProtocolMessage.QuitScanReply> {
             override fun handleResponse(response: ProtocolMessage.QuitScanReply) {
+                callback?.invoke(true)
             }
         })
     }
 
-    fun setConfigurationParameter(parameterCode: Byte, values: ByteArray) {
+    fun setConfigurationParameter(
+        parameterCode: Byte,
+        values: ByteArray,
+        callback: ((Boolean) -> Unit)? = null
+    ) {
         if (!assertIdle()) {
             return
         }
@@ -138,11 +167,12 @@ class QuanaDeviceCommunicator(
             )
         }, object : ProtocolResponseHandler<ProtocolMessage.SetConfigurationParameterReply> {
             override fun handleResponse(response: ProtocolMessage.SetConfigurationParameterReply) {
+                callback?.invoke(true)
             }
         })
     }
 
-    fun getConfigurationParameter(parameterCode: Byte) {
+    fun getConfigurationParameter(parameterCode: Byte, callback: ((ByteArray) -> Unit)? = null) {
         if (!assertIdle()) {
             return
         }
@@ -154,11 +184,12 @@ class QuanaDeviceCommunicator(
             )
         }, object : ProtocolResponseHandler<ProtocolMessage.GetConfigurationParameterReply> {
             override fun handleResponse(response: ProtocolMessage.GetConfigurationParameterReply) {
+                callback?.invoke(response.parameterValues)
             }
         })
     }
 
-    fun getDeviceStatus() {
+    fun getDeviceStatus(callback: ((DeviceStatus) -> Unit)? = null) {
         if (!assertIdle()) {
             return
         }
@@ -169,6 +200,24 @@ class QuanaDeviceCommunicator(
             )
         }, object : ProtocolResponseHandler<ProtocolMessage.GetDeviceStatusReply> {
             override fun handleResponse(response: ProtocolMessage.GetDeviceStatusReply) {
+                callback?.invoke(response.deviceStatus)
+            }
+        })
+    }
+
+    fun getSample(sampleId: UShort, callback: ((sensorCode: UByte, sampleData: ByteArray) -> Unit)? = null) {
+        if (!assertIdle()) {
+            return
+        }
+
+        sendMessage({ id ->
+            ProtocolMessage.GetSample(
+                id.toUShort(),
+                sampleId
+            )
+        }, object : ProtocolResponseHandler<ProtocolMessage.GetSampleReply> {
+            override fun handleResponse(response: ProtocolMessage.GetSampleReply) {
+                callback?.invoke(response.sensorCode, response.sampleData)
             }
         })
     }

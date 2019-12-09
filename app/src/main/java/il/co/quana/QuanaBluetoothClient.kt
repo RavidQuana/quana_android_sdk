@@ -1,6 +1,7 @@
 package il.co.quana
 
 import android.bluetooth.BluetoothGattCharacteristic
+import android.util.Log
 import com.polidea.rxandroidble2.RxBleConnection
 import com.polidea.rxandroidble2.RxBleDevice
 import il.co.quana.protocol.ProtocolException
@@ -18,12 +19,17 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
 
     private val compositeDisposable = CompositeDisposable()
 
+    var connection: RxBleConnection? = null
+
     var callback: QuanaBluetoothClientCallback? = null
 
     fun connect(): Disposable {
 
         device.observeConnectionStateChanges()
             .subscribe { state ->
+                if (state == RxBleConnection.RxBleConnectionState.DISCONNECTED) {
+                    connection = null
+                }
                 Timber.d("Client: State = %s", state)
             }.let {
                 compositeDisposable.add(it)
@@ -46,6 +52,8 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
     }
 
     private fun handleConnection(connection: RxBleConnection) {
+        this.connection = connection
+
         connection.discoverServices()
             .flatMap { services -> services.getService(SERVICE_UUID.toUUID()) }
             .map { service -> service.getCharacteristic(CHARACTERISTIC_UUID.toUUID()) }
@@ -59,6 +67,8 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
             .let {
                 compositeDisposable.add(it)
             }
+
+        getDeviceInfo()
     }
 
     private fun handleCharacteristic(
@@ -70,6 +80,11 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
             .subscribe(
                 { bytes ->
                     Timber.i("${bytes.size} bytes received")
+
+                    if (binaryLogEnabled) {
+                        Log.d(BINARY_LOG_TAG, "in  << [${bytes.binaryLog()}]")
+                    }
+
                     val message = ProtocolMessage.parseReply(bytes)
                     callback?.messageReceived(message)
                     Timber.i("$message")
@@ -88,5 +103,34 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
             ).let {
                 compositeDisposable.add(it)
             }
+    }
+
+    fun getDeviceInfo() {
+        arrayOf(
+            GattAttributes.FIRMWARE_REVISION_STRING,
+            GattAttributes.MANUFACTURER_NAME_STRING,
+            GattAttributes.HARDWARE_REVISION_STRING,
+            GattAttributes.SOFTWARE_REVISION_STRING
+        ).forEach {
+            readAndPrint(it)
+        }
+    }
+
+    private fun readAndPrint(uuid: String) {
+        connection?.let { connection ->
+            connection
+                .readCharacteristic(uuid.toUUID())
+                .map { bytes -> String(bytes) }
+                .subscribe({ value ->
+                    Timber.i("${ GattAttributes.lookup(uuid)} = $value")
+                },
+                    { throwable ->
+                        Timber.e(throwable)
+                    }
+                )
+                .let {
+                    compositeDisposable.add(it)
+                }
+        }
     }
 }
