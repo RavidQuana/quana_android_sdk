@@ -10,9 +10,9 @@ private interface ProtocolResponseHandler<T : ProtocolMessage.BaseReply> {
     fun handleResponse(response: T)
 }
 
-internal val BINARY_LOG_TAG = "BIN"
-internal val binaryLogEnabled = true
-internal val NON_ACK_RETRY_COUNT = 3
+internal const val BINARY_LOG_TAG = "BIN"
+internal const val binaryLogEnabled = true
+internal const val NON_ACK_RETRY_COUNT = 3
 
 internal fun ByteArray.binaryLog() = this.joinToString(separator = ",")
 
