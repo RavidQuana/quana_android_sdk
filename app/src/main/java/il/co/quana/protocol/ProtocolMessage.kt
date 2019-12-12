@@ -310,7 +310,7 @@ sealed class ProtocolMessage(
     class GetScanResultsReply(id: UShort, data: ByteArray) :
         BaseReply(id, ProtocolOpcode.GetScanResults) {
 
-        val scanStatus: ScanStatus
+        val scanStatus: DeviceStatus
         val amountOfSamples: UShort
         override val ack: UByte
 
@@ -319,7 +319,7 @@ sealed class ProtocolMessage(
                 .order(ProtocolByteOrder)
 
             val scanStatusByte = buffer.get()
-            scanStatus = ScanStatus.fromValue(scanStatusByte)
+            scanStatus = DeviceStatus.fromValue(scanStatusByte)
                 ?: throw ProtocolException("Unknown ScanStatus[$scanStatusByte]")
             amountOfSamples = buffer.getShort().toUShort()
 

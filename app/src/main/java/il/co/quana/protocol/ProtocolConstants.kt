@@ -15,19 +15,19 @@ enum class DeviceStatus(val value: Byte) {
     }
 }
 
-enum class ScanStatus(val value: Byte) {
-
-    noScanResultsFound(0x00),
-    stillScanning(0x01),
-    scanFailure(0x02),
-    scanCompleted(0x03);
-
-    companion object {
-
-        fun fromValue(value: Byte) =
-            ScanStatus.values().firstOrNull { it.value == value }
-    }
-}
+//enum class ScanStatus(val value: Byte) {
+//
+//    noScanResultsFound(0x00),
+//    stillScanning(0x01),
+//    scanFailure(0x02),
+//    scanCompleted(0x03);
+//
+//    companion object {
+//
+//        fun fromValue(value: Byte) =
+//            ScanStatus.values().firstOrNull { it.value == value }
+//    }
+//}
 
 
 @ExperimentalUnsignedTypes

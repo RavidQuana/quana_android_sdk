@@ -308,7 +308,7 @@ class QuanaDeviceCommunicator(
     }
 
     fun getScanResults(
-        callback: ((amountOfSamples: UShort, scanStatus: ScanStatus) -> Unit)? = null
+        callback: ((amountOfSamples: UShort, scanStatus: DeviceStatus) -> Unit)? = null
     ) {
         if (!assertIdle()) {
             return
