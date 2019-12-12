@@ -7,6 +7,7 @@ import com.cocosw.bottomsheet.BottomSheet
 import kotlinx.android.synthetic.main.activity_device.*
 import timber.log.Timber
 import java.util.*
+import java.util.concurrent.CountDownLatch
 
 
 //private const val ADDRESS = "80:E1:26:00:6A:8B"
@@ -17,6 +18,8 @@ class DeviceActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_DEVICE_MAC_ADDRESS = "EXTRA_DEVICE_MAC_ADDRESS"
     }
+
+    private var amountOfScans = 0
 
     private lateinit var quanaDeviceCommunicator: QuanaDeviceCommunicator
 
@@ -80,9 +83,45 @@ class DeviceActivity : AppCompatActivity() {
                     R.id.getDeviceStatus -> quanaDeviceCommunicator.getDeviceStatus {
                         Timber.i("Device status-> $it")
                     }
+                    R.id.getScanResults -> quanaDeviceCommunicator.getScanResults { amount, status ->
+                        Timber.i("Scan results -> amount=$amount, status=$status")
+                        amountOfScans = amount.toInt()
+                    }
+                    R.id.getSample -> getScanResults()
+                    R.id.resetDevice -> quanaDeviceCommunicator.resetDevice {
+                        Timber.i("Reset result-> $it")
+                    }
+                    R.id.takeFirmwareChunk -> quanaDeviceCommunicator.takeFirmwareChunk(
+                        0u,
+                        777u,
+                        byteArrayOf(1, 2, 3, 4, 5)
+                    ) {
+                        Timber.i("Take FW Chunk-> $it")
+                    }
+                    R.id.goToFirmwareUpdate -> quanaDeviceCommunicator.goToFirmwareUpdate {
+                        Timber.i("Go to FW Update-> $it")
+                    }
+                    R.id.checkFirmwareChunk -> quanaDeviceCommunicator.checkFirmwareChunk(0u) { id, ack ->
+                        Timber.i("Check FW Chunk-> ack=$ack")
+                    }
+
                 }
             }.show()
+    }
 
+    fun getScanResults() {
+        Thread {
+            (1..amountOfScans).forEach { index ->
+                val countDownLatch = CountDownLatch(1)
+                Timber.i("Getting sample $index/$amountOfScans")
+                quanaDeviceCommunicator.getSample(index.toUShort()) { sensorCode, sampleData ->
+                    Timber.i("Ready $sensorCode/$sensorCode, sampleData=${sampleData.size} bytes")
+                    countDownLatch.countDown()
+                }
+                countDownLatch.await()
+            }
+            Timber.i("--- Done getting samples ---")
+        }.start()
     }
 }
 

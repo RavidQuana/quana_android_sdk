@@ -88,7 +88,30 @@ sealed class ProtocolMessage(
                         messageId,
                         data
                     )
-                    else -> throw ProtocolException("Unsupported opcode $opcode")
+                    ProtocolOpcode.GetSample -> GetSampleReply(
+                        messageId,
+                        data
+                    )
+                    ProtocolOpcode.ChangeToFirmwareUpgrade -> GoToFirmwareUpdateReply(
+                        messageId,
+                        data
+                    )
+                    ProtocolOpcode.TakeFirmwareChunk -> TakeFirmwareChunkReply(
+                        messageId,
+                        data
+                    )
+                    ProtocolOpcode.CheckFirmwareChunkSaved -> CheckFirmwareChunkReply(
+                        messageId,
+                        data
+                    )
+                    ProtocolOpcode.Reset -> ResetDeviceReply(
+                        messageId,
+                        data
+                    )
+                    ProtocolOpcode.GetScanResults -> GetScanResultsReply(
+                        messageId,
+                        data
+                    )
                 }
 
             } ?: throw ProtocolException("Unknown Opcode")
@@ -342,7 +365,7 @@ sealed class ProtocolMessage(
     class TakeFirmwareChunkReply(id: UShort, data: ByteArray) :
         BaseReply(id, ProtocolOpcode.TakeFirmwareChunk) {
 
-        val chankId: UInt
+        val chunkId: UInt
 
         override val ack: UByte
 
@@ -350,23 +373,23 @@ sealed class ProtocolMessage(
             val buffer = ByteBuffer.wrap(data)
                 .order(ProtocolByteOrder)
 
-            chankId = buffer.getInt().toUInt()
+            chunkId = buffer.getInt().toUInt()
             ack = buffer.get().toUByte()
         }
     }
 
     //----------------------------------------------------------------------------------------------
 
-    class CheckFirmwareChunk(id: UShort, chankId: UInt) : ProtocolMessage(
+    class CheckFirmwareChunk(id: UShort, chunkId: UInt) : ProtocolMessage(
         id,
         ProtocolOpcode.CheckFirmwareChunkSaved,
-        ByteBuffer.allocate(UShort.SIZE_BYTES).order(ProtocolByteOrder).putInt(chankId.toInt()).safeArray()
+        ByteBuffer.allocate(UShort.SIZE_BYTES).order(ProtocolByteOrder).putInt(chunkId.toInt()).safeArray()
     )
 
     class CheckFirmwareChunkReply(id: UShort, data: ByteArray) :
         BaseReply(id, ProtocolOpcode.CheckFirmwareChunkSaved) {
 
-        val chankId: UInt
+        val chunkId: UInt
 
         override val ack: UByte
 
@@ -374,7 +397,7 @@ sealed class ProtocolMessage(
             val buffer = ByteBuffer.wrap(data)
                 .order(ProtocolByteOrder)
 
-            chankId = buffer.getInt().toUInt()
+            chunkId = buffer.getInt().toUInt()
             ack = buffer.get().toUByte()
         }
     }
