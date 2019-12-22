@@ -3,6 +3,7 @@ package il.co.quana
 import android.bluetooth.BluetoothGattCharacteristic
 import android.util.Log
 import com.polidea.rxandroidble2.RxBleConnection
+import com.polidea.rxandroidble2.RxBleConnection.GATT_MTU_MAXIMUM
 import com.polidea.rxandroidble2.RxBleDevice
 import il.co.quana.protocol.ProtocolException
 import il.co.quana.protocol.ProtocolMessage
@@ -75,7 +76,9 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
         connection: RxBleConnection,
         characteristic: BluetoothGattCharacteristic
     ) {
-        connection.setupNotification(characteristic)
+        connection.requestMtu(GATT_MTU_MAXIMUM)
+            .toObservable()
+            .flatMap { connection.setupNotification(characteristic) }
             .flatMap { notificationObservable -> notificationObservable }
             .subscribe(
                 { bytes ->
@@ -122,7 +125,7 @@ class QuanaBluetoothClient(val device: RxBleDevice) {
                 .readCharacteristic(uuid.toUUID())
                 .map { bytes -> String(bytes) }
                 .subscribe({ value ->
-                    Timber.d("${ GattAttributes.lookup(uuid)} = $value")
+                    Timber.d("${GattAttributes.lookup(uuid)} = $value")
                 },
                     { throwable ->
                         Timber.e(throwable)
