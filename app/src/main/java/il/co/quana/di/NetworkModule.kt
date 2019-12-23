@@ -2,6 +2,8 @@ package il.co.quana.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.google.gson.FieldNamingPolicy
+import com.google.gson.GsonBuilder
 import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
 import il.co.quana.network.ApiSettings
 import il.co.quana.network.AuthInterceptor
@@ -12,7 +14,7 @@ import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-const val BASE_SERVER_URL = "https://quana-server-api-staging.herokuapp.com/api/v1/"
+const val BASE_SERVER_URL = "http://quana-server-staging.herokuapp.com/ml/"
 
 val networkModule = module {
 
@@ -39,11 +41,12 @@ fun provideDefaultOkhttpClient(apiSettings: ApiSettings): OkHttpClient {
 }
 
 fun provideRetrofit(client: OkHttpClient): Retrofit {
-
+    val gson = GsonBuilder()
+    gson.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
     return Retrofit.Builder()
         .baseUrl(BASE_SERVER_URL)
         .client(client)
-        .addConverterFactory(GsonConverterFactory.create())
+        .addConverterFactory(GsonConverterFactory.create(gson.create()))
         .addCallAdapterFactory(CoroutineCallAdapterFactory())
         .build()
 }

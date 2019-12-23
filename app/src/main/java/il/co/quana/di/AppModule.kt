@@ -6,6 +6,6 @@ import org.koin.dsl.module
 
 val appModule = module {
 
-    viewModel { TestDeviceViewModel( get()) }
+    viewModel { TestDeviceViewModel( apiService = get(), application =  get()) }
 
 }
