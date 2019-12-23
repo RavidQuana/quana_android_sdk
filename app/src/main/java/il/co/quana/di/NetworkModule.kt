@@ -14,7 +14,7 @@ import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-const val BASE_SERVER_URL = "http://quana-server-staging.herokuapp.com/ml/"//"https://quana-server-api-staging.herokuapp.com/api/v1/"
+const val BASE_SERVER_URL = "http://quana-server-staging.herokuapp.com/ml/"
 
 val networkModule = module {
 

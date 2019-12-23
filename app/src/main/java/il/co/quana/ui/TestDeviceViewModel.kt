@@ -1,9 +1,7 @@
 package il.co.quana.ui
 
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import android.app.Application
+import androidx.lifecycle.*
 import il.co.quana.QuanaApplication
 import il.co.quana.QuanaDeviceCommunicator
 import il.co.quana.QuanaDeviceCommunicatorFactory
@@ -19,7 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class TestDeviceViewModel(private val apiService: ApiService) : AndroidViewModel(QuanaApplication()){
+class TestDeviceViewModel(private val apiService: ApiService, application: Application) : AndroidViewModel(application) {
 
     sealed class NavigationEvent{
         data class RequestResult(val resultType: ResultType, val resultData: Any? = null): NavigationEvent()
@@ -36,7 +34,7 @@ class TestDeviceViewModel(private val apiService: ApiService) : AndroidViewModel
         DEVICE_ERROR,
     }
 
-    private var tagInfoList  = mutableListOf<TagInfo>()
+    private var tagInfoList  = mutableSetOf<TagInfo>()
     private var note: String? = null
     private var brand: String? = null
     private var product: String? = null
