@@ -2,88 +2,70 @@ package il.co.quana
 
 import android.content.Context
 import il.co.quana.protocol.DeviceStatus
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext: Context){
 
-    private lateinit var quanaDeviceCommunicator: QuanaDeviceCommunicator
-
     init {
         initDevice(deviceAddress, applicationContext)
     }
 
-    private fun initDevice(deviceAddress: String, applicationContext: Context){
+    private lateinit var quanaDeviceCommunicator: QuanaDeviceCommunicator
+
+    private fun initDevice(deviceAddress: String, applicationContext: Context) {
         quanaDeviceCommunicator = QuanaDeviceCommunicatorFactory.createQuanaDeviceCommunicator(
             applicationContext,
             deviceAddress)
     }
 
-
-    suspend fun startScan(): Boolean = withContext(Dispatchers.IO){
-        suspendCoroutine<Boolean> { coroutine ->
+    suspend fun startScan(): Boolean = suspendCoroutine<Boolean> { continuation ->
             quanaDeviceCommunicator.startScan { success ->
-                coroutine.resume(success)
-            }}
+                continuation.resume(success)
+            }
     }
 
-    suspend fun resetDevice(): Boolean = withContext(Dispatchers.IO){
-        suspendCoroutine<Boolean> { coroutine ->
+    suspend fun resetDevice(): Boolean = suspendCoroutine<Boolean> { continuation ->
             quanaDeviceCommunicator.resetDevice {success ->
-                coroutine.resume(success)
+                continuation.resume(success)
             }
-        }
     }
 
-    suspend fun quitScan(): Boolean = withContext(Dispatchers.IO){
-        suspendCoroutine<Boolean> { coroutine ->
+    suspend fun quitScan(): Boolean = suspendCoroutine<Boolean> { continuation ->
             quanaDeviceCommunicator.quitScan {success ->
-                coroutine.resume(success)
+                continuation.resume(success)
             }
-        }
     }
 
-    suspend fun getDeviceStatus(): DeviceStatus = withContext(Dispatchers.IO){
-        suspendCoroutine<DeviceStatus> { coroutine ->
+    suspend fun getDeviceStatus(): DeviceStatus = suspendCoroutine<DeviceStatus> { continuation ->
             quanaDeviceCommunicator.getDeviceStatus {deviceStatus ->
-                coroutine.resume(deviceStatus)
+                continuation.resume(deviceStatus)
             }
-        }
     }
 
 
-    suspend fun getSample(index: Int): Sample = withContext(Dispatchers.IO){
-        suspendCoroutine<Sample> { coroutine ->
+    suspend fun getSample(index: Int): Sample = suspendCoroutine<Sample> { continuation ->
             quanaDeviceCommunicator.getSample(index.toUShort()){sensorCode,sampleData  ->
-                coroutine.resume(Sample(sensorCode, sampleData))
+                continuation.resume(Sample(sensorCode, sampleData))
             }
-        }
     }
 
-    suspend fun getScanResults(): ScanResult = withContext(Dispatchers.IO){
-        suspendCoroutine<ScanResult> { coroutine ->
+    suspend fun getScanResults(): ScanResult = suspendCoroutine<ScanResult> { continuation ->
             quanaDeviceCommunicator.getScanResults{ amountOfSamples, scanStatus  ->
-                coroutine.resume(ScanResult(amountOfSamples, scanStatus))
+                continuation.resume(ScanResult(amountOfSamples, scanStatus))
             }
-        }
     }
 
-    suspend fun takeFirmwareChunk(chunkId: UInt, address: UInt, chunk: ByteArray): UInt = withContext(Dispatchers.IO){
-        suspendCoroutine<UInt> { coroutine ->
+    suspend fun takeFirmwareChunk(chunkId: UInt, address: UInt, chunk: ByteArray): UInt = suspendCoroutine<UInt> { continuation ->
             quanaDeviceCommunicator.takeFirmwareChunk(chunkId, address, chunk){ chunkId  ->
-                coroutine.resume(chunkId)
+                continuation.resume(chunkId)
             }
-        }
     }
 
-    suspend fun goToFirmwareUpdate(): Boolean = withContext(Dispatchers.IO){
-        suspendCoroutine<Boolean> { coroutine ->
+    suspend fun goToFirmwareUpdate(): Boolean = suspendCoroutine<Boolean> { continuation ->
             quanaDeviceCommunicator.goToFirmwareUpdate{ success  ->
-                coroutine.resume(success)
+                continuation.resume(success)
             }
-        }
     }
 
     data class Sample(
