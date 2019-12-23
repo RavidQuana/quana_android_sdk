@@ -12,9 +12,16 @@ data class ServerResponse<T>(
     val data: T? = null
 )
 
+enum class TagInfo{
+    MOLD,
+    PESTICIDE,
+    SATIVA,
+    INDICA
+}
+
 data class MetaDataModel(
     val settings: ArrayList<AppSetting>? = null,
-    val symptom_categories: List<SymptomCategory>? = null,
+    val symptomCategories: List<SymptomCategory>? = null,
     val treatments: List<Treatment>? = null,
     val products: List<Product>? = null,
     val side_effects: List<SideEffect>? = null
@@ -23,7 +30,7 @@ data class MetaDataModel(
 data class AppSetting(
     val id: Long,
     val key: String,
-    val data_type: String? = null,
+    val dataType: String? = null,
     val value: Any? = null
 )
 
@@ -48,7 +55,7 @@ data class Product(
     val name: String?,
     val pros: String?,
     val cons: String?,
-    val has_mold: Boolean?
+    val hasMold: Boolean?
 )
 
 data class SideEffect(

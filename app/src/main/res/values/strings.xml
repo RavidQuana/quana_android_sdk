@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Quana</string>
+
+    <string name="button_indica">Indica</string>
+    <string name="button_sativa">Sative</string>
+    <string name="button_pesticide">Pesticide</string>
+    <string name="button_mold">Mold</string>
 </resources>
