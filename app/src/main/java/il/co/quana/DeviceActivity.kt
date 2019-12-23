@@ -119,6 +119,7 @@ class DeviceActivity : AppCompatActivity() {
                     countDownLatch.countDown()
                 }
                 countDownLatch.await()
+                Thread.sleep(500)
             }
             Timber.i("--- Done getting samples ---")
         }.start()
