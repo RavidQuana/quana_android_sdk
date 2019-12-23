@@ -2,16 +2,12 @@ package il.co.quana.ui
 
 import android.app.Application
 import androidx.lifecycle.*
-import il.co.quana.QuanaApplication
 import il.co.quana.QuanaDeviceCommunicator
-import il.co.quana.QuanaDeviceCommunicatorFactory
 import il.co.quana.common.LiveEventData
 import il.co.quana.common.ProgressData
 import il.co.quana.model.TagInfo
 import il.co.quana.model.MetaDataModel
-import il.co.quana.model.Product
 import il.co.quana.network.ApiService
-import il.co.quana.protocol.DeviceStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
