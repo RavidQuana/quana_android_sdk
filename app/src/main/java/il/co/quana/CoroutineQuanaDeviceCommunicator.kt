@@ -7,15 +7,20 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class CoroutineQuanaDeviceCommunicator{
+class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext: Context){
 
     private lateinit var quanaDeviceCommunicator: QuanaDeviceCommunicator
 
-    fun initDevice(deviceAddress: String, applicationContext: Context) {
+    init {
+        initDevice(deviceAddress, applicationContext)
+    }
+
+    private fun initDevice(deviceAddress: String, applicationContext: Context){
         quanaDeviceCommunicator = QuanaDeviceCommunicatorFactory.createQuanaDeviceCommunicator(
             applicationContext,
             deviceAddress)
     }
+
 
     suspend fun startScan(): Boolean = withContext(Dispatchers.IO){
         suspendCoroutine<Boolean> { coroutine ->

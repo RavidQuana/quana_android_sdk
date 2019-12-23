@@ -1,5 +1,7 @@
 package il.co.quana.model
 
+import java.io.File
+
 
 data class ServerResponse<T>(
     /**
@@ -18,6 +20,13 @@ enum class TagInfo{
     SATIVA,
     INDICA
 }
+
+data class SampleRequest(
+    val sample: File,
+    val brand: String ="test",
+    val product:String = "test",
+    val tags: List<String> = emptyList()
+)
 
 data class MetaDataModel(
     val settings: ArrayList<AppSetting>? = null,

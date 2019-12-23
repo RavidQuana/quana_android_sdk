@@ -22,6 +22,10 @@ import timber.log.Timber
 
 class TestDeviceActivity : AppCompatActivity() {
 
+    companion object {
+        const val EXTRA_DEVICE_MAC_ADDRESS = "EXTRA_DEVICE_MAC_ADDRESS"
+    }
+
     private val viewModel by viewModel<TestDeviceViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {

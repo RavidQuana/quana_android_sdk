@@ -6,7 +6,7 @@ class ApiSettings(val sharedPreferences: SharedPreferences) {
 
     val TOKEN_KEY = "token_key"
     val REFRESH_TOKEN_KEY = "refresh_token_key"
-    val DEFAULT_TOKEN = ""//"nmkbYQqoGitgNbn4WCroaA1d"
+    val DEFAULT_TOKEN = "Test"//"nmkbYQqoGitgNbn4WCroaA1d"
 
     var token: String
         get() = sharedPreferences.getString(TOKEN_KEY, DEFAULT_TOKEN)!!
