@@ -36,7 +36,19 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
+def retrofit2_version = "2.6.2"
+def retrofit2_converter_gson = "2.6.2"
+def retrofit2_kotlin_coroutines_adapter = "0.9.2"
+def okhttp3_version = "3.13.1"
+def okhttp3_logging_interceptor = "3.13.1"
+def lifecycle_version = "2.2.0-rc03"
+def kotlinCoroutineVersion = "1.1.0"
+def koin_version = '2.0.1'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
@@ -50,10 +62,6 @@ dependencies {
 
     implementation "com.polidea.rxandroidble2:rxandroidble:1.10.3"
 
-    implementation 'org.koin:koin-android:2.0.1'
-    implementation 'org.koin:koin-androidx-scope:2.0.1'
-    implementation 'org.koin:koin-androidx-viewmodel:2.0.1'
-
     implementation 'com.jakewharton.timber:timber:4.7.1'
     implementation 'com.jraska:console:1.0.0'
     implementation 'com.jraska:console-timber-tree:1.0.0'
@@ -64,4 +72,26 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
+
+    //androidX - view model lifecycle
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
+
+    //network - Retrofit
+    implementation "com.squareup.retrofit2:retrofit:$retrofit2_version"
+    implementation "com.squareup.retrofit2:converter-gson:$retrofit2_converter_gson"
+    implementation "com.jakewharton.retrofit:retrofit2-kotlin-coroutines-adapter:$retrofit2_kotlin_coroutines_adapter"
+
+    //network - Okhttp3
+    implementation "com.squareup.okhttp3:okhttp:$okhttp3_version"
+    implementation "com.squareup.okhttp3:logging-interceptor:$okhttp3_logging_interceptor"
+
+    //Kotlin Coroutines
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinCoroutineVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinCoroutineVersion"
+
+    //di
+    implementation "org.koin:koin-androidx-scope:$koin_version"
+    implementation "org.koin:koin-androidx-viewmodel:$koin_version"
+    implementation "org.koin:koin-android:$koin_version"
+
 }
