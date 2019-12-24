@@ -4,14 +4,12 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextUtils
-import android.text.TextWatcher
 import android.view.View
 import android.widget.CheckBox
 import android.widget.Toast
 import androidx.lifecycle.Observer
 import com.monkeytech.playform.common.AfterTextChangedWatcher
 import il.co.quana.DeviceActivity
-import il.co.quana.QuanaDeviceCommunicatorFactory
 import il.co.quana.R
 import il.co.quana.common.LiveEvent
 import il.co.quana.isLocationPermissionGranted
@@ -43,7 +41,6 @@ class TestDeviceActivity : AppCompatActivity() {
     }
 
     private fun startFlow() {
-
         val address = intent.getStringExtra(DeviceActivity.EXTRA_DEVICE_MAC_ADDRESS)
         if (TextUtils.isEmpty(address)) {
             Timber.e("EXTRA_DEVICE_MAC_ADDRESS is required. Stopping...")
@@ -108,6 +105,10 @@ class TestDeviceActivity : AppCompatActivity() {
         restartBtn.setOnClickListener {
             //TODO == restart !!!
         }
+        sendNowBtn.setOnClickListener {
+            viewModel.sendNow()
+        }
+
     }
 
     private fun handleScreenState(screenState: TestDeviceViewModel.ScreenState?) {
@@ -134,6 +135,7 @@ class TestDeviceActivity : AppCompatActivity() {
             testDeviceActProgressBar.visibility = if(it) View.VISIBLE else View.GONE
         }
     }
+
 
     private fun handleNavigationEvent(navigationEvent: LiveEvent<TestDeviceViewModel.NavigationEvent>?) {
         navigationEvent?.let {

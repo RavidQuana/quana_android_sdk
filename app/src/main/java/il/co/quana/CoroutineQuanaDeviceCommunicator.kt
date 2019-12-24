@@ -45,8 +45,9 @@ class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext
 
 
     suspend fun getSample(index: Int): Sample = suspendCoroutine<Sample> { continuation ->
-            quanaDeviceCommunicator.getSample(index.toUShort()){sensorCode,sampleData  ->
-                continuation.resume(Sample(sensorCode, sampleData))
+            quanaDeviceCommunicator.getSample(index.toUShort()){sensorCode,sampleData, rawData  ->
+
+                continuation.resume(Sample(sensorCode, sampleData, rawData))
             }
     }
 
@@ -70,7 +71,8 @@ class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext
 
     data class Sample(
         val sensorCode: UByte,
-        val sampleData: ByteArray
+        val sampleData: ByteArray,
+        val rawData: ByteArray
     )
 
     data class ScanResult(

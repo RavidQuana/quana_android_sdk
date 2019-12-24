@@ -289,7 +289,7 @@ class QuanaDeviceCommunicator(
 
     fun getSample(
         sampleId: UShort,
-        callback: ((sensorCode: UByte, sampleData: ByteArray) -> Unit)? = null
+        callback: ((sensorCode: UByte, sampleData: ByteArray, rawData: ByteArray) -> Unit)? = null
     ) {
         if (!assertIdle()) {
             return
@@ -302,7 +302,7 @@ class QuanaDeviceCommunicator(
             )
         }, object : ProtocolResponseHandler<ProtocolMessage.GetSampleReply> {
             override fun handleResponse(response: ProtocolMessage.GetSampleReply) {
-                callback?.invoke(response.sensorCode, response.sampleData)
+                callback?.invoke(response.sensorCode, response.sampleData, response.data)
             }
         })
     }

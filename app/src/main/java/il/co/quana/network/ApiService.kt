@@ -23,18 +23,14 @@ interface ApiService {
      * @param brand
      * @param file
      */
-//    @Multipart
-//    @PUT("upload_white_sample")
-//    suspend fun uploadSample(@Body sampleRequest : SampleRequest): ResponseBody
-
-
     @Multipart
     @PUT("upload_white_sample")
     suspend fun uploadSample(
-        @Part(value = "file") file: RequestBody,//MultipartBody.Part,
+        @Part file : MultipartBody.Part,
         @Part(value = "brand") brand: RequestBody,
         @Part(value = "product") product: RequestBody,
         @Part(value = "note") note: RequestBody,
-        @Part(value = "tegs") tegs: RequestBody): ResponseBody
+        @Part(value = "tags") tags: RequestBody): ResponseBody
 
 }
+

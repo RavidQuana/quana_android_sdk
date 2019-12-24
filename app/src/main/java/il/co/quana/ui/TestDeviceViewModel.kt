@@ -38,6 +38,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
     private var note: String? = null
     private var brand: String? = null
     private var product: String? = null
+    private val samples = mutableListOf<CoroutineQuanaDeviceCommunicator.Sample>()
 
     private lateinit var quanaDeviceCommunicator: CoroutineQuanaDeviceCommunicator
 
@@ -47,8 +48,14 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
 
 
     fun initDevice(deviceAddress: String) {
-        quanaDeviceCommunicator =  CoroutineQuanaDeviceCommunicator(deviceAddress,  applicationContext = getApplication())
-        startScan()
+        viewModelScope.launch {
+            launch(Dispatchers.IO){
+                quanaDeviceCommunicator =  CoroutineQuanaDeviceCommunicator(deviceAddress,  applicationContext = getApplication())
+                delay(10_000)
+                startScan()
+            }
+        }
+
     }
 
     private fun startScan() {
@@ -58,7 +65,6 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
             launch(Dispatchers.IO){
                 try {
                     Timber.i("startScan")
-                    delay(3_000)
                     val success = quanaDeviceCommunicator.startScan()
                     Timber.i("Scan is success : $success")
                     if (success){
@@ -131,7 +137,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
 
 
     private suspend fun getAllScans(amountOfScans: Int) : List<CoroutineQuanaDeviceCommunicator.Sample> = withContext(Dispatchers.IO){
-        val samples = mutableListOf<CoroutineQuanaDeviceCommunicator.Sample>()
+        samples.clear()
         (1..amountOfScans).forEach { index ->
 //            val countDownLatch = CountDownLatch(1)
             Timber.i("Getting sample $index/$amountOfScans")
@@ -145,11 +151,20 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
     }
 
 
-
-
-//    private suspend fun fetchMeta(): MetaDataModel? = withContext(Dispatchers.IO){
-//        apiService.fetchMeta().data
-//    }
+    fun sendNow(){
+        progressData.startProgress()
+        viewModelScope.launch(Dispatchers.IO){
+            launch(Dispatchers.IO){
+                try {
+                    sampleRepository.sendSample(samples = samples, brand = brand, product = product,tagInfoList = tagInfoList, note = note)
+                    progressData.endProgress()
+                }catch (ex: Exception){
+                    ex.printStackTrace()
+                    progressData.endProgress()
+                }
+            }
+        }
+    }
 
     fun addNewTagInfo(tagInfo: TagInfo) {
         tagInfoList.add(tagInfo)

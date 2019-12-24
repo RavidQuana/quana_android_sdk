@@ -261,7 +261,7 @@ sealed class ProtocolMessage(
         ByteBuffer.allocate(UShort.SIZE_BYTES).order(ProtocolByteOrder).putShort(sampleId.toShort()).safeArray()
     )
 
-    class GetSampleReply(id: UShort, data: ByteArray) :
+    class GetSampleReply(id: UShort, val data: ByteArray) :
         BaseReply(id, ProtocolOpcode.GetSample) {
 
         val sensorCode: UByte

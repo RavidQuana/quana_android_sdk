@@ -7,7 +7,7 @@ import org.koin.dsl.module
 
 val appModule = module {
 
-    factory { SampleRepository(apiService = get()) }
+    factory { SampleRepository(context = get() ,apiService = get() ) }
 
     viewModel { TestDeviceViewModel( sampleRepository = get(), application =  get()) }
 

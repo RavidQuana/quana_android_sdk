@@ -114,7 +114,7 @@ class DeviceActivity : AppCompatActivity() {
             (1..amountOfScans).forEach { index ->
                 val countDownLatch = CountDownLatch(1)
                 Timber.i("Getting sample $index/$amountOfScans")
-                quanaDeviceCommunicator.getSample(index.toUShort()) { sensorCode, sampleData ->
+                quanaDeviceCommunicator.getSample(index.toUShort()) { sensorCode, sampleData, rawData ->
                     Timber.i("Ready $sensorCode/$sensorCode, sampleData=${sampleData.size} bytes")
                     countDownLatch.countDown()
                 }
