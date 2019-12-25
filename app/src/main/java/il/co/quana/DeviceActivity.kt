@@ -2,6 +2,7 @@ package il.co.quana
 
 import android.os.Bundle
 import android.text.TextUtils
+import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import com.cocosw.bottomsheet.BottomSheet
 import kotlinx.android.synthetic.main.activity_device.*
@@ -26,6 +27,7 @@ class DeviceActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_device)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (isLocationPermissionGranted()) {
             startFlow()
@@ -122,6 +124,11 @@ class DeviceActivity : AppCompatActivity() {
             }
             Timber.i("--- Done getting samples ---")
         }.start()
+    }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        finish()
     }
 }
 

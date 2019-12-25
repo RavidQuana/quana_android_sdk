@@ -51,6 +51,8 @@ class DeviceLookupActivity : AppCompatActivity() {
                 putExtra(DeviceActivity.EXTRA_DEVICE_MAC_ADDRESS, scanResult.bleDevice.macAddress)
             }.let {
                 startActivity(it)
+                compositeDisposable.dispose()
+                finish()
             }
         }
 
