@@ -7,6 +7,7 @@ import il.co.quana.CoroutineQuanaDeviceCommunicator
 import il.co.quana.common.LiveEventData
 import il.co.quana.common.ProgressData
 import il.co.quana.data.SampleRepository
+import il.co.quana.model.SampleStatus
 import il.co.quana.model.TagInfo
 import il.co.quana.protocol.DeviceStatus
 import kotlinx.coroutines.Dispatchers
@@ -123,12 +124,15 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
                     val scanResult = quanaDeviceCommunicator.getScanResults()
                     val samples = getAllScans(scanResult.amountOfSamples.toInt())
                     val serverResult  = sampleRepository.sendSample(samples, tagInfoList, note, brand, product)
-                    //TODO == check the result
-
+                    if(serverResult.status == SampleStatus.SUCCESS){
+                        navigationEvent.postRawValue(NavigationEvent.RequestResult(ResultType.SUCCESS, serverResult.status.name))
+                    }else{
+                        navigationEvent.postRawValue(NavigationEvent.RequestResult(ResultType.ERROR, serverResult.status.name))
+                    }
                     progressData.endProgress()
                 }catch (ex: Exception) {
                     ex.printStackTrace()
-                    navigationEvent.postRawValue(NavigationEvent.RequestResult(ResultType.ERROR))
+                    navigationEvent.postRawValue(NavigationEvent.RequestResult(ResultType.ERROR, "Server error"))
                     progressData.endProgress()
                 }
             }

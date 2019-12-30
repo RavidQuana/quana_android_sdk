@@ -1,5 +1,6 @@
 package il.co.quana.ui
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.Editable
@@ -10,6 +11,7 @@ import android.widget.Toast
 import androidx.lifecycle.Observer
 import com.monkeytech.playform.common.AfterTextChangedWatcher
 import il.co.quana.DeviceActivity
+import il.co.quana.DeviceLookupActivity
 import il.co.quana.R
 import il.co.quana.common.LiveEvent
 import il.co.quana.isLocationPermissionGranted
@@ -103,7 +105,9 @@ class TestDeviceActivity : AppCompatActivity() {
             viewModel.sendData()
         }
         restartBtn.setOnClickListener {
-            //TODO == restart !!!
+            val intent = Intent(this, DeviceLookupActivity::class.java)
+            startActivity(intent)
+            finish()
         }
         sendNowBtn.setOnClickListener {
             viewModel.sendNow()
@@ -145,6 +149,8 @@ class TestDeviceActivity : AppCompatActivity() {
                     is TestDeviceViewModel.NavigationEvent.RequestResult ->{
                         Toast.makeText(this, "Result: ${navigationEvent.resultType}", Toast.LENGTH_LONG).show()
                         scanResultText.text = navigationEvent.resultType.name
+                        scanResultLayout.visibility = View.VISIBLE
+                        testDeviceActSendDetailsLayout.visibility = View.GONE
                     }
                 }
             }

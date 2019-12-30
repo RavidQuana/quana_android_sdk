@@ -1,20 +1,12 @@
 package il.co.quana.network
 
-import il.co.quana.model.MetaDataModel
-import il.co.quana.model.SampleRequest
-import il.co.quana.model.ServerResponse
+import il.co.quana.model.SampleResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
-import okhttp3.ResponseBody
 import retrofit2.http.*
 
 
 interface ApiService {
-
-    //Utils
-    @GET("utils/meta")
-    suspend fun fetchMeta(): ServerResponse<MetaDataModel>
-
 
     /**
      * @param note
@@ -30,7 +22,7 @@ interface ApiService {
         @Part(value = "brand") brand: RequestBody,
         @Part(value = "product") product: RequestBody,
         @Part(value = "note") note: RequestBody,
-        @Part(value = "tags") tags: RequestBody): ResponseBody
+        @Part(value = "tags") tags: RequestBody): SampleResponse
 
 }
 

@@ -1,5 +1,6 @@
 package il.co.quana.model
 
+import com.google.gson.annotations.SerializedName
 import java.io.File
 
 
@@ -28,46 +29,18 @@ data class SampleRequest(
     val tags: List<String> = emptyList()
 )
 
-data class MetaDataModel(
-    val settings: ArrayList<AppSetting>? = null,
-    val symptomCategories: List<SymptomCategory>? = null,
-    val treatments: List<Treatment>? = null,
-    val products: List<Product>? = null,
-    val side_effects: List<SideEffect>? = null
+data class SampleResponse(
+    val message: String?,
+    val status: SampleStatus,
+    val data: List<SampleResponseData>?
 )
 
-data class AppSetting(
-    val id: Long,
-    val key: String,
-    val dataType: String? = null,
-    val value: Any? = null
-)
-
-data class SymptomCategory(
-    val id: Int,
+data class SampleResponseData(
     val name: String?,
-    val symptoms: List<Symptom>?
+    val Percentage: Int?
 )
 
-data class Symptom(
-    val id: Int,
-    val name: String
-)
-
-data class Treatment(
-    val id: Int,
-    val name: String
-)
-
-data class Product(
-    val id: Int,
-    val name: String?,
-    val pros: String?,
-    val cons: String?,
-    val hasMold: Boolean?
-)
-
-data class SideEffect(
-    val id: Int,
-    val name: String
-)
+enum class SampleStatus{
+    @SerializedName("success") SUCCESS,
+    @SerializedName("error") ERROR,
+}
