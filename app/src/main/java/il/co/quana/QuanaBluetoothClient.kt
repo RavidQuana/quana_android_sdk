@@ -8,11 +8,8 @@ import com.polidea.rxandroidble2.RxBleDevice
 import il.co.quana.protocol.ProtocolException
 import il.co.quana.protocol.ProtocolMessage
 import io.reactivex.Observable
-import io.reactivex.Single
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
-import io.reactivex.internal.operators.observable.ObservableAll
-import io.reactivex.internal.operators.observable.ObservableAllSingle
 import io.reactivex.rxkotlin.Observables
 import timber.log.Timber
 
@@ -43,6 +40,8 @@ class QuanaBluetoothClient(val device: RxBleDevice) :
     var connection: RxBleConnection? = null
 
     var callback: QuanaBluetoothClientCallback? = null
+
+    private var writabeCharacteristic: BluetoothGattCharacteristic? = null
 
     fun connect() {
 
@@ -82,9 +81,19 @@ class QuanaBluetoothClient(val device: RxBleDevice) :
 
         connection.discoverServices()
             .flatMap { services -> services.getService(SERVICE_UUID.toUUID()) }
-            .map { service -> service.getCharacteristic(CHARACTERISTIC_UUID.toUUID()) }
-            .subscribe({ characteristic ->
-                handleCharacteristic(connection, characteristic)
+            .map { service ->
+                arrayOf(
+                    service.getCharacteristic(CHARACTERISTIC_UUID.toUUID()),
+                    service.getCharacteristic(WRITEABLE_CHARACTERISTIC_UUID.toUUID())
+                )
+            }
+            .subscribe({ characteristics ->
+                characteristics.firstOrNull { it.uuid == CHARACTERISTIC_UUID.toUUID() }?.let {
+                    handleCharacteristic(connection, it)
+                }
+                characteristics.firstOrNull { it.uuid == WRITEABLE_CHARACTERISTIC_UUID.toUUID() }?.let {
+                    handleWriteableCharacteristic(connection, it)
+                }
             },
                 { throwable ->
                     Timber.e(throwable)
@@ -131,6 +140,33 @@ class QuanaBluetoothClient(val device: RxBleDevice) :
             ).let {
                 compositeDisposable.add(it)
             }
+    }
+
+    private fun handleWriteableCharacteristic(
+        connection: RxBleConnection,
+        characteristic: BluetoothGattCharacteristic
+    ) {
+        this.writabeCharacteristic = characteristic
+    }
+
+    fun write(message: ProtocolMessage) {
+
+        val bytes = message.toByteArray()
+
+        writabeCharacteristic?.let {
+            connection!!.writeCharacteristic(it,bytes).subscribe(
+                { bytes ->
+                    Timber.i("${bytes.size} written")
+                },
+                { throwable ->
+                    Timber.e(throwable)
+                }
+            )
+        }
+
+        if (binaryLogEnabled) {
+            Log.d(BINARY_LOG_TAG, "out >> [${bytes.binaryLog()}]")
+        }
     }
 
     fun getDeviceInfo() {
