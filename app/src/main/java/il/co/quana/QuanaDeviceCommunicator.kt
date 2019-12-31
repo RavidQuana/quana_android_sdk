@@ -17,37 +17,46 @@ internal const val BINARY_LOG_TAG = "BIN"
 internal const val binaryLogEnabled = true
 internal const val NON_ACK_RETRY_COUNT = 3
 
-internal fun ByteArray.binaryLog() = this.joinToString(separator = ",")
+@ExperimentalUnsignedTypes
+internal fun ByteArray.binaryLog() = this.map { it.toUByte() }.joinToString(separator = ",")
 
+interface QuanaDeviceCommunicatorCallback {
+    fun deviceConnected()
+    fun deviceDisconnected()
+    fun deviceInfoReceived(info: QuanaDeviceInfo)
+}
 
 class QuanaDeviceCommunicatorFactory {
     companion object {
         fun createQuanaDeviceCommunicator(
             context: Context,
-            deviceAddress: String
+            deviceAddress: String,
+            communicatorCallback: QuanaDeviceCommunicatorCallback? = null
         ): QuanaDeviceCommunicator {
             val rxBleClient = DI.rxBleClient(context.applicationContext)
 
-            val quanaBluetoothServer = QuanaBluetoothServer(context.applicationContext)
-            quanaBluetoothServer.open()
-//                .let { compositeDisposable.add(it) }
+//            val quanaBluetoothServer = QuanaBluetoothServer(context.applicationContext)
+//            quanaBluetoothServer.open()
 
             val device = rxBleClient.getBleDevice(deviceAddress)
 
             val quanaBluetoothClient = QuanaBluetoothClient(device)
             quanaBluetoothClient.connect()
-//                .let { compositeDisposable.add(it) }
 
-            return QuanaDeviceCommunicator(quanaBluetoothServer, quanaBluetoothClient)
+            return QuanaDeviceCommunicator(
+//                quanaBluetoothServer,
+                quanaBluetoothClient,
+                communicatorCallback
+            )
         }
     }
 }
 
-
 @ExperimentalUnsignedTypes
 class QuanaDeviceCommunicator(
-    private val server: QuanaBluetoothServer,
-    private val client: QuanaBluetoothClient
+//    private val server: QuanaBluetoothServer,
+    private val client: QuanaBluetoothClient,
+    private val callback: QuanaDeviceCommunicatorCallback?
 ) :
     QuanaBluetoothClientCallback {
 
@@ -76,6 +85,19 @@ class QuanaDeviceCommunicator(
         handleResponse(response)
     }
 
+    override fun deviceConnected() {
+        callback?.deviceConnected()
+    }
+
+    override fun deviceDisconnected() {
+        resetConnection("Device disconnected")
+        callback?.deviceDisconnected()
+    }
+
+    override fun deviceInfoReceived(info: QuanaDeviceInfo) {
+        callback?.deviceInfoReceived(info)
+    }
+
     override fun messageError(exception: ProtocolException) {
         Timber.e(exception)
         resetConnection("ProtocolException")
@@ -101,6 +123,9 @@ class QuanaDeviceCommunicator(
         this.pendingRequest = null
         Timber.e("Device re-connection is not yet implemented")
         Timber.d("Resetting connection [%s]", reason)
+
+        client.dispose()
+//        server.dispose()
     }
 
     private fun assertIdle(resetIfNot: Boolean = false): Boolean {
@@ -140,9 +165,8 @@ class QuanaDeviceCommunicator(
             responseHandler.handleResponse(it as T)
         }
         requestAttemptsCounter.set(NON_ACK_RETRY_COUNT - 1)
-        server.write(
-            message,
-            client.device
+        client.write(
+            message
         )
     }
 
@@ -173,9 +197,8 @@ class QuanaDeviceCommunicator(
             if (response.ack == ErrorCodes.crcFailure.value) {
                 if (requestAttemptsCounter.decrementAndGet() > 0) {
                     Timber.d("CRC Failure. Retrying...")
-                    server.write(
-                        message,
-                        client.device
+                    client.write(
+                        message
                     )
                 } else {
                     resetConnection("Non ACK response")

@@ -2,6 +2,7 @@ package il.co.quana
 
 import android.os.Bundle
 import android.text.TextUtils
+import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import com.cocosw.bottomsheet.BottomSheet
 import kotlinx.android.synthetic.main.activity_device.*
@@ -13,7 +14,7 @@ import java.util.concurrent.CountDownLatch
 //private const val ADDRESS = "80:E1:26:00:6A:8B"
 
 
-class DeviceActivity : AppCompatActivity() {
+class DeviceActivity : AppCompatActivity(), QuanaDeviceCommunicatorCallback {
 
     companion object {
         const val EXTRA_DEVICE_MAC_ADDRESS = "EXTRA_DEVICE_MAC_ADDRESS"
@@ -26,6 +27,7 @@ class DeviceActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_device)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (isLocationPermissionGranted()) {
             startFlow()
@@ -36,6 +38,7 @@ class DeviceActivity : AppCompatActivity() {
         button.setOnClickListener {
             buttonClicked()
         }
+        button.isEnabled = false
     }
 
     fun startFlow() {
@@ -52,9 +55,22 @@ class DeviceActivity : AppCompatActivity() {
 
         quanaDeviceCommunicator = QuanaDeviceCommunicatorFactory.createQuanaDeviceCommunicator(
             applicationContext,
-            deviceAddress
+            deviceAddress,
+            this
         )
 
+    }
+
+    override fun deviceConnected() = runOnUiThread {
+        button.isEnabled = true
+    }
+
+    override fun deviceDisconnected() = runOnUiThread {
+        onBackPressed()
+    }
+
+    override fun deviceInfoReceived(info: QuanaDeviceInfo) {
+        Timber.i(info.toString())
     }
 
 
@@ -123,6 +139,11 @@ class DeviceActivity : AppCompatActivity() {
             }
             Timber.i("--- Done getting samples ---")
         }.start()
+    }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        finish()
     }
 }
 
