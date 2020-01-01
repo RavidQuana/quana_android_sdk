@@ -1,10 +1,10 @@
-package il.co.quana.ui
+package il.co.quana.features
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.*
 import il.co.quana.CoroutineQuanaDeviceCommunicator
-import il.co.quana.common.LiveEventData
+import il.co.quana.QuanaDeviceCommunicatorCallback
+import il.co.quana.QuanaDeviceInfo
 import il.co.quana.common.ProgressData
 import il.co.quana.data.SampleRepository
 import il.co.quana.model.SampleStatus
@@ -15,24 +15,31 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-
+import java.util.*
 
 
 class TestDeviceViewModel(private val sampleRepository: SampleRepository, application: Application) : AndroidViewModel(application) {
 
-    sealed class NavigationEvent{
-        data class RequestResult(val resultType: ResultType, val resultData: Any? = null): NavigationEvent()
+    sealed class ScreenState{
+        data class UpdateScreenState(val screenStateId: ScreenStatusID, val resultData: Any? = null): ScreenState()
     }
 
-    enum class ResultType{
-        SUCCESS,
-        ERROR
+    enum class ScreenStatusID{
+        DEVICE_IDLE,
+        DEVICE_CONNECTING,
+        DEVICE_CONNECTED,
+        DEVICE_START_SCAN_ERROR,
+        DEVICE_SCANNING,
+        DEVICE_SCANNING_ERROR,
+        DEVICE_SCAN_COMPLETE,
+        DEVICE_DISCONNECTED,
+        SERVER_REQUEST_SUCCESS,
+        SERVER_REQUEST_FAIL
     }
 
-    enum class ScreenState{
-        DEVICE_IN_PROGRESS,
-        DEVICE_SCAN_SUCCESS,
-        DEVICE_ERROR,
+    enum class TimerState{
+        VISIBLE,
+        GONE
     }
 
     private var tagInfoList  = mutableSetOf<TagInfo>()
@@ -43,43 +50,72 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
 
     private lateinit var quanaDeviceCommunicator: CoroutineQuanaDeviceCommunicator
 
-    val navigationEvent = LiveEventData<NavigationEvent>()
     val progressData = ProgressData()
+    val deviceInfo = MutableLiveData<QuanaDeviceInfo>()
     val screenState = MutableLiveData<ScreenState>()
+    val sampleCount = MutableLiveData<Int>()
+    val sampleCollectIndex = MutableLiveData<Int>()
+    val timerState = MutableLiveData<TimerState>()
 
+    init {
+        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_IDLE))
+        timerState.postValue(TimerState.GONE)
+    }
 
     fun initDevice(deviceAddress: String) {
+        progressData.startProgress()
         viewModelScope.launch {
             launch(Dispatchers.IO){
-                quanaDeviceCommunicator =  CoroutineQuanaDeviceCommunicator(deviceAddress,  applicationContext = getApplication())
-                delay(10_000)
-                startScan()
+                screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_CONNECTING))
+                quanaDeviceCommunicator =  CoroutineQuanaDeviceCommunicator(
+                    deviceAddress = deviceAddress,
+                    applicationContext = getApplication(),
+                    listener = object : QuanaDeviceCommunicatorCallback {
+                        override fun deviceConnected() {
+                            Timber.d("deviceConnected")
+                            screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_CONNECTED))
+                            progressData.endProgress()
+                        }
+
+                        override fun deviceDisconnected() {
+                            Timber.d("deviceDisconnected")
+                            screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_DISCONNECTED))
+                            progressData.endProgress()
+                        }
+
+                        override fun deviceInfoReceived(info: QuanaDeviceInfo) {
+                            Timber.d("deviceInfoReceived")
+                            deviceInfo.postValue(info)
+                        }
+                    })
             }
         }
 
     }
 
-    private fun startScan() {
-        screenState.postValue(ScreenState.DEVICE_IN_PROGRESS)
+    fun startScan() {
+        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCANNING))
         progressData.startProgress()
         viewModelScope.launch {
             launch(Dispatchers.IO){
                 try {
+                    timerState.postValue(TimerState.VISIBLE)
                     Timber.i("startScan")
                     val success = quanaDeviceCommunicator.startScan()
                     Timber.i("Scan is success : $success")
                     if (success){
-
                         checkDeviceStatus()
                     }else{
-                        screenState.postValue(ScreenState.DEVICE_ERROR)
+                        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_START_SCAN_ERROR))
                         progressData.endProgress()
+                        timerState.postValue(TimerState.GONE)
                     }
                 }catch (ex: Exception) {
                     ex.printStackTrace()
                     Timber.i("Error in scanning")
-                    screenState.postValue(ScreenState.DEVICE_ERROR)
+                    screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_START_SCAN_ERROR))
                     progressData.endProgress()
+                    timerState.postValue(TimerState.GONE)
                 }
             }
         }
@@ -87,7 +123,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
 
     private fun checkDeviceStatus(){
 //        progressData.startProgress()
-        screenState.postValue(ScreenState.DEVICE_IN_PROGRESS)
+        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCANNING))
         viewModelScope.launch {
             launch(Dispatchers.IO){
                 try {
@@ -96,19 +132,23 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
                     Timber.i("deviceStatus: ${deviceStatus.name}")
                     while (deviceStatus != DeviceStatus.scanningComplete){
                         if (deviceStatus == DeviceStatus.failure){
-                            screenState.postValue(ScreenState.DEVICE_ERROR)
+                            screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCANNING_ERROR))
                             break
                         }
                         delay(10_000)
                         deviceStatus = quanaDeviceCommunicator.getDeviceStatus()
                         Timber.i("deviceStatus: ${deviceStatus.name}")
                     }
+                    val scanResult = quanaDeviceCommunicator.getScanResults()
+                    Timber.d("scanResult amountOfSamples: ${scanResult.amountOfSamples}")
                     progressData.endProgress()
-                    screenState.postValue(ScreenState.DEVICE_SCAN_SUCCESS)
+                    timerState.postValue(TimerState.GONE)
+                    screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCAN_COMPLETE))
                 }catch (ex: Exception){
                     ex.printStackTrace()
                     Timber.i("Error on checkDeviceStatus")
-                    screenState.postValue(ScreenState.DEVICE_ERROR)
+                    screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCANNING_ERROR))
+                    timerState.postValue(TimerState.GONE)
                     progressData.endProgress()
                 }
             }
@@ -117,6 +157,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
     }
 
     fun sendData(){
+        timerState.postValue(TimerState.VISIBLE)
         progressData.startProgress()
         viewModelScope.launch {
             launch(Dispatchers.IO){
@@ -125,15 +166,17 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
                     val samples = getAllScans(scanResult.amountOfSamples.toInt())
                     val serverResult  = sampleRepository.sendSample(samples, tagInfoList, note, brand, product)
                     if(serverResult.status == SampleStatus.SUCCESS){
-                        navigationEvent.postRawValue(NavigationEvent.RequestResult(ResultType.SUCCESS, serverResult.status.name))
+                        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.SERVER_REQUEST_SUCCESS, serverResult.data))
                     }else{
-                        navigationEvent.postRawValue(NavigationEvent.RequestResult(ResultType.ERROR, serverResult.status.name))
+                        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.SERVER_REQUEST_FAIL, serverResult.message))
                     }
                     progressData.endProgress()
+                    timerState.postValue(TimerState.GONE)
                 }catch (ex: Exception) {
                     ex.printStackTrace()
-                    navigationEvent.postRawValue(NavigationEvent.RequestResult(ResultType.ERROR, "Server error"))
+                    screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.SERVER_REQUEST_FAIL, "SERVER REQUEST FAIL"))
                     progressData.endProgress()
+                    timerState.postValue(TimerState.GONE)
                 }
             }
         }
@@ -142,15 +185,20 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
 
     private suspend fun getAllScans(amountOfScans: Int) : List<CoroutineQuanaDeviceCommunicator.Sample> = withContext(Dispatchers.IO){
         samples.clear()
+        sampleCount.postValue(amountOfScans)
+        val startTime = Calendar.getInstance().timeInMillis
         (1..amountOfScans).forEach { index ->
 //            val countDownLatch = CountDownLatch(1)
             Timber.i("Getting sample $index/$amountOfScans")
+            sampleCollectIndex.postValue(index)
             val sample = quanaDeviceCommunicator.getSample(index)
             samples.add(sample)
             Timber.i("Ready ${sample.sensorCode}/${sample.sensorCode}, sampleData=${sample.sampleData.size} bytes")
-            delay(500)
+//            delay(500)
         }
+
         Timber.i("--- Done getting samples ---")
+        Timber.d("Time to getAllScans: ${Calendar.getInstance().timeInMillis - startTime}")
         samples
     }
 

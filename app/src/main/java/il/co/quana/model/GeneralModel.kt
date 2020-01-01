@@ -37,7 +37,7 @@ data class SampleResponse(
 
 data class SampleResponseData(
     val name: String?,
-    val Percentage: Int?
+    val Percentage: Double?
 )
 
 enum class SampleStatus{

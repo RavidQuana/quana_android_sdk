@@ -5,18 +5,18 @@ import il.co.quana.protocol.DeviceStatus
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext: Context){
+class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext: Context, listener: QuanaDeviceCommunicatorCallback){
 
     init {
-        initDevice(deviceAddress, applicationContext)
+        initDevice(deviceAddress, applicationContext, listener = listener)
     }
 
     private lateinit var quanaDeviceCommunicator: QuanaDeviceCommunicator
 
-    private fun initDevice(deviceAddress: String, applicationContext: Context) {
+    private fun initDevice(deviceAddress: String, applicationContext: Context, listener: QuanaDeviceCommunicatorCallback) {
         quanaDeviceCommunicator = QuanaDeviceCommunicatorFactory.createQuanaDeviceCommunicator(
             applicationContext,
-            deviceAddress)
+            deviceAddress, listener)
     }
 
     suspend fun startScan(): Boolean = suspendCoroutine<Boolean> { continuation ->

@@ -37,15 +37,15 @@ class SampleRepository(val context: Context,  val apiService: ApiService) {
         val body = RequestBody.create(MultipartBody.FORM, buf)
          */
 
-        val s = Gson().toJson(tagInfoList).toString()
+        val s = Gson().toJson(tagInfoList.map { it.name.toLowerCase().capitalize() }).toString()
 
         val requestBody = RequestBody.create(MultipartBody.FORM, outputStream.toByteArray())
 
         val _body = MultipartBody.Part.createFormData("sample", "test", requestBody)
-        val _brand = RequestBody.create(MultipartBody.FORM, brand)
-        val _product = RequestBody.create(MultipartBody.FORM, product)
+        val _brand = RequestBody.create(MultipartBody.FORM, brand?.toLowerCase()?.capitalize())
+        val _product = RequestBody.create(MultipartBody.FORM, product?.toLowerCase()?.capitalize())
         val _tags = RequestBody.create(MultipartBody.FORM, s)
-        val _note = RequestBody.create(MultipartBody.FORM, note)
+        val _note = RequestBody.create(MultipartBody.FORM, note ?: "")
 
 
         apiService.uploadSample(file = _body,brand =  _brand, product = _product,tags =  _tags, note = _note)
