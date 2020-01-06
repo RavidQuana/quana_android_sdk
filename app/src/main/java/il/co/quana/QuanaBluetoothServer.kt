@@ -9,7 +9,7 @@ import io.reactivex.disposables.Disposable
 import timber.log.Timber
 import java.util.*
 
-class QuanaBluetoothServer(private val context: Context) {
+class QuanaBluetoothServer(private val context: Context): Disposable {
 
 
     private val bluetoothManager =
@@ -20,18 +20,8 @@ class QuanaBluetoothServer(private val context: Context) {
 
     private var disposed = false
 
-
-    fun open(): Disposable {
+    fun open() {
         innerOpen()
-        return object : Disposable {
-            override fun isDisposed(): Boolean = disposed
-
-            override fun dispose() {
-                disposed = true
-                bluetoothServer.close()
-            }
-
-        }
     }
 
     private fun innerOpen() {
@@ -92,5 +82,12 @@ class QuanaBluetoothServer(private val context: Context) {
                 false
             )
         }
+    }
+
+    override fun isDisposed() = disposed
+
+    override fun dispose() {
+        disposed = true
+        bluetoothServer.close()
     }
 }

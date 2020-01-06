@@ -61,7 +61,7 @@ sealed class ProtocolMessage(
             val messageId = byteBuffer.getShort().toUShort()
             val opcodeValue = byteBuffer.get().toUByte()
             val dataLength = byteBuffer.get()
-            val data = ByteArray(dataLength.toInt())
+            val data = ByteArray(dataLength.toUByte().toInt())
             byteBuffer.get(data)
 
             return ProtocolOpcode.fromValue(opcodeValue)?.let { opcode ->
@@ -227,7 +227,7 @@ sealed class ProtocolMessage(
 
             parameterCode = buffer.get().toUByte()
             val length = buffer.get()
-            parameterValues = ByteArray(length.toInt())
+            parameterValues = ByteArray(length.toUByte().toInt())
             buffer.get(parameterValues)
             ack = buffer.get().toUByte()
         }
@@ -261,7 +261,7 @@ sealed class ProtocolMessage(
         ByteBuffer.allocate(UShort.SIZE_BYTES).order(ProtocolByteOrder).putShort(sampleId.toShort()).safeArray()
     )
 
-    class GetSampleReply(id: UShort, data: ByteArray) :
+    class GetSampleReply(id: UShort, val data: ByteArray) :
         BaseReply(id, ProtocolOpcode.GetSample) {
 
         val sensorCode: UByte
@@ -277,7 +277,7 @@ sealed class ProtocolMessage(
             sensorCode = buffer.get().toUByte()
             sampleId = buffer.getShort().toUShort()
             val length = buffer.get()
-            sampleData = ByteArray(length.toInt())
+            sampleData = ByteArray(length.toUByte().toInt())
             buffer.get(sampleData)
             ack = buffer.get().toUByte()
         }

@@ -1,20 +1,12 @@
 package il.co.quana.network
 
-import il.co.quana.model.MetaDataModel
-import il.co.quana.model.ServerResponse
+import il.co.quana.model.SampleResponse
+import okhttp3.MultipartBody
 import okhttp3.RequestBody
-import okhttp3.ResponseBody
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.PUT
+import retrofit2.http.*
 
 
 interface ApiService {
-
-    //Utils
-    @GET("utils/meta")
-    suspend fun fetchMeta(): ServerResponse<MetaDataModel>
-
 
     /**
      * @param note
@@ -23,7 +15,14 @@ interface ApiService {
      * @param brand
      * @param file
      */
+    @Multipart
     @PUT("upload_white_sample")
-    suspend fun uploadSample(@Body sampleRequest : RequestBody): ResponseBody
+    suspend fun uploadSample(
+        @Part file : MultipartBody.Part,
+        @Part(value = "brand") brand: RequestBody,
+        @Part(value = "product") product: RequestBody,
+        @Part(value = "note") note: RequestBody,
+        @Part(value = "tags") tags: RequestBody): SampleResponse
 
 }
+

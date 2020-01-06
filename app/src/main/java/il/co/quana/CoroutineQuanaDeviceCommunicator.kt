@@ -2,23 +2,21 @@ package il.co.quana
 
 import android.content.Context
 import il.co.quana.protocol.DeviceStatus
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext: Context){
+class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext: Context, listener: QuanaDeviceCommunicatorCallback){
 
     init {
-        initDevice(deviceAddress, applicationContext)
+        initDevice(deviceAddress, applicationContext, listener = listener)
     }
 
     private lateinit var quanaDeviceCommunicator: QuanaDeviceCommunicator
 
-    private fun initDevice(deviceAddress: String, applicationContext: Context) {
+    private fun initDevice(deviceAddress: String, applicationContext: Context, listener: QuanaDeviceCommunicatorCallback) {
         quanaDeviceCommunicator = QuanaDeviceCommunicatorFactory.createQuanaDeviceCommunicator(
             applicationContext,
-            deviceAddress)
+            deviceAddress, listener)
     }
 
     suspend fun startScan(): Boolean = suspendCoroutine<Boolean> { continuation ->
@@ -47,8 +45,9 @@ class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext
 
 
     suspend fun getSample(index: Int): Sample = suspendCoroutine<Sample> { continuation ->
-            quanaDeviceCommunicator.getSample(index.toUShort()){sensorCode,sampleData  ->
-                continuation.resume(Sample(sensorCode, sampleData))
+            quanaDeviceCommunicator.getSample(index.toUShort()){sensorCode,sampleData, rawData  ->
+
+                continuation.resume(Sample(sensorCode, sampleData, rawData))
             }
     }
 
@@ -72,7 +71,8 @@ class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext
 
     data class Sample(
         val sensorCode: UByte,
-        val sampleData: ByteArray
+        val sampleData: ByteArray,
+        val rawData: ByteArray
     )
 
     data class ScanResult(

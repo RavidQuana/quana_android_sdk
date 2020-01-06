@@ -1,6 +1,7 @@
 package il.co.quana
 
 import android.app.Application
+import android.util.Log.INFO
 import com.jraska.console.timber.ConsoleTree
 import il.co.quana.di.appModule
 import il.co.quana.di.networkModule
@@ -29,8 +30,11 @@ class QuanaApplication : Application() {
 
     fun setupTimber() {
 //        val consoleTree = ConsoleTree.Builder()
+//            .minPriority(INFO)
 //            .build()
 //        Timber.plant(consoleTree)
         Timber.plant(Timber.DebugTree())
+
+        Timber.i("App Version: ${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})")
     }
 }
