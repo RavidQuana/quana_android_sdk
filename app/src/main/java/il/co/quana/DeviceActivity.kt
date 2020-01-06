@@ -76,6 +76,7 @@ class DeviceActivity : AppCompatActivity(), QuanaDeviceCommunicatorCallback {
 
     fun buttonClicked() {
 
+        /*
         BottomSheet.Builder(this).title("Message To Send").sheet(R.menu.messages)
             .listener { dialog, which ->
                 when (which) {
@@ -123,9 +124,12 @@ class DeviceActivity : AppCompatActivity(), QuanaDeviceCommunicatorCallback {
 
                 }
             }.show()
+
+         */
     }
 
     fun getScanResults() {
+        /*
         Thread {
             (1..amountOfScans).forEach { index ->
                 val countDownLatch = CountDownLatch(1)
@@ -139,6 +143,8 @@ class DeviceActivity : AppCompatActivity(), QuanaDeviceCommunicatorCallback {
             }
             Timber.i("--- Done getting samples ---")
         }.start()
+
+         */
     }
 
     override fun onBackPressed() {

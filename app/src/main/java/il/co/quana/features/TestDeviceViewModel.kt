@@ -2,9 +2,7 @@ package il.co.quana.features
 
 import android.app.Application
 import androidx.lifecycle.*
-import il.co.quana.CoroutineQuanaDeviceCommunicator
-import il.co.quana.QuanaDeviceCommunicatorCallback
-import il.co.quana.QuanaDeviceInfo
+import il.co.quana.*
 import il.co.quana.common.ProgressData
 import il.co.quana.data.SampleRepository
 import il.co.quana.model.SampleStatus
@@ -31,7 +29,10 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
         DEVICE_START_SCAN_ERROR,
         DEVICE_SCANNING,
         DEVICE_SCANNING_ERROR,
+        DEVICE_SCAN_RESULT_ERROR,
+        DEVICE_SCAN_STATUS_ERROR,
         DEVICE_SCAN_COMPLETE,
+        DEVICE_FETCH_SAMPLES_ERROR,
         DEVICE_DISCONNECTED,
         SERVER_REQUEST_SUCCESS,
         SERVER_REQUEST_FAIL
@@ -46,7 +47,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
     private var note: String? = null
     private var brand: String? = null
     private var product: String? = null
-    private val samples = mutableListOf<CoroutineQuanaDeviceCommunicator.Sample>()
+    private val samples = mutableListOf<QuanaDeviceCommunicator.SampleInfo>()
 
     private lateinit var quanaDeviceCommunicator: CoroutineQuanaDeviceCommunicator
 
@@ -101,9 +102,10 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
                 try {
                     timerState.postValue(TimerState.VISIBLE)
                     Timber.i("startScan")
-                    val success = quanaDeviceCommunicator.startScan()
-                    Timber.i("Scan is success : $success")
-                    if (success){
+                    val messageResult = quanaDeviceCommunicator.startScan()
+
+                    Timber.i("Scan is success : ${(messageResult.success != null)}")
+                    if (messageResult.success != null){
                         checkDeviceStatus()
                     }else{
                         screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_START_SCAN_ERROR))
@@ -128,22 +130,26 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
             launch(Dispatchers.IO){
                 try {
                     Timber.i("checkDeviceStatus")
-                    var deviceStatus = quanaDeviceCommunicator.getDeviceStatus()
-                    Timber.i("deviceStatus: ${deviceStatus.name}")
-                    while (deviceStatus != DeviceStatus.scanningComplete){
-                        if (deviceStatus == DeviceStatus.failure){
+                    var deviceStatusMessageResult = quanaDeviceCommunicator.getDeviceStatus()
+                    Timber.i("deviceStatus: ${deviceStatusMessageResult.success?.name}")
+                    while (deviceStatusMessageResult.success != null && deviceStatusMessageResult.success != DeviceStatus.scanningComplete){
+                        if (deviceStatusMessageResult.success != null && deviceStatusMessageResult.success == DeviceStatus.failure){
                             screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCANNING_ERROR))
                             break
                         }
                         delay(10_000)
-                        deviceStatus = quanaDeviceCommunicator.getDeviceStatus()
-                        Timber.i("deviceStatus: ${deviceStatus.name}")
+                        deviceStatusMessageResult = quanaDeviceCommunicator.getDeviceStatus()
+                        Timber.i("deviceStatus: ${deviceStatusMessageResult.success?.name}")
                     }
-                    val scanResult = quanaDeviceCommunicator.getScanResults()
-                    Timber.d("scanResult amountOfSamples: ${scanResult.amountOfSamples}")
+                    val scanMessageResult = quanaDeviceCommunicator.getScanResults()
+                    Timber.d("scanResult amountOfSamples: ${scanMessageResult.success?.amountOfSamples}")
                     progressData.endProgress()
                     timerState.postValue(TimerState.GONE)
-                    screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCAN_COMPLETE))
+                    if (deviceStatusMessageResult.success == null || deviceStatusMessageResult.error == ErrorType.Timeout){
+                        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCAN_STATUS_ERROR))
+                    }else{
+                        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCAN_COMPLETE))
+                    }
                 }catch (ex: Exception){
                     ex.printStackTrace()
                     Timber.i("Error on checkDeviceStatus")
@@ -162,13 +168,22 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
         viewModelScope.launch {
             launch(Dispatchers.IO){
                 try {
-                    val scanResult = quanaDeviceCommunicator.getScanResults()
-                    val samples = getAllScans(scanResult.amountOfSamples.toInt())
-                    val serverResult  = sampleRepository.sendSample(samples, tagInfoList, note, brand, product)
-                    if(serverResult.status == SampleStatus.SUCCESS){
-                        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.SERVER_REQUEST_SUCCESS, serverResult.data))
+                    val scanMessageResult = quanaDeviceCommunicator.getScanResults()
+                    val amountOfSamples = scanMessageResult.success?.amountOfSamples?.toInt()
+                    if (amountOfSamples == null){
+                        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_SCAN_RESULT_ERROR))
                     }else{
-                        screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.SERVER_REQUEST_FAIL, serverResult.message))
+                        try {
+                            val samples = getAllScans(amountOfSamples)
+                            val serverResult  = sampleRepository.sendSample(samples, tagInfoList, note, brand, product)
+                            if(serverResult.status == SampleStatus.SUCCESS){
+                                screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.SERVER_REQUEST_SUCCESS, serverResult.data))
+                            }else{
+                                screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.SERVER_REQUEST_FAIL, serverResult.message))
+                            }
+                        }catch (ex: Exception){
+                            screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_FETCH_SAMPLES_ERROR, ex.message))
+                        }
                     }
                     progressData.endProgress()
                     timerState.postValue(TimerState.GONE)
@@ -183,20 +198,27 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
     }
 
 
-    private suspend fun getAllScans(amountOfScans: Int) : List<CoroutineQuanaDeviceCommunicator.Sample> = withContext(Dispatchers.IO){
+    private suspend fun getAllScans(amountOfScans: Int) : List<QuanaDeviceCommunicator.SampleInfo> = withContext(Dispatchers.IO){
         samples.clear()
         sampleCount.postValue(amountOfScans)
         val startTime = Calendar.getInstance().timeInMillis
+        var successToFetchAllSamples = true
         (1..amountOfScans).forEach { index ->
 //            val countDownLatch = CountDownLatch(1)
             Timber.i("Getting sample $index/$amountOfScans")
             sampleCollectIndex.postValue(index)
-            val sample = quanaDeviceCommunicator.getSample(index)
-            samples.add(sample)
-            Timber.i("Ready ${sample.sensorCode}/${sample.sensorCode}, sampleData=${sample.sampleData.size} bytes")
-//            delay(500)
+            val sampleMessageResult = quanaDeviceCommunicator.getSample(index)
+            if (sampleMessageResult.error == ErrorType.Timeout || sampleMessageResult.success == null){
+                successToFetchAllSamples = false
+                return@forEach
+            }else{
+                samples.add(sampleMessageResult.success)
+                Timber.i("Ready ${sampleMessageResult.success.sensorCode}/${sampleMessageResult.success.sensorCode}, sampleData=${sampleMessageResult.success.sampleData.size} bytes")
+            }
         }
-
+        if (!successToFetchAllSamples) {
+            throw Exception("Fail to fetch samples from device")
+        }
         Timber.i("--- Done getting samples ---")
         Timber.d("Time to getAllScans: ${Calendar.getInstance().timeInMillis - startTime}")
         samples
