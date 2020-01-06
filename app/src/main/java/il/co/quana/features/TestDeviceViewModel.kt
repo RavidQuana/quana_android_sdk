@@ -4,10 +4,12 @@ import android.app.Application
 import androidx.lifecycle.*
 import il.co.quana.*
 import il.co.quana.common.ProgressData
+import il.co.quana.common.QuanaException
 import il.co.quana.data.SampleRepository
 import il.co.quana.model.SampleStatus
 import il.co.quana.model.TagInfo
 import il.co.quana.protocol.DeviceStatus
+import il.co.quana.protocol.ProtocolMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -198,6 +200,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
     }
 
 
+    @Throws(QuanaException::class)
     private suspend fun getAllScans(amountOfScans: Int) : List<QuanaDeviceCommunicator.SampleInfo> = withContext(Dispatchers.IO){
         samples.clear()
         sampleCount.postValue(amountOfScans)
@@ -217,7 +220,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
             }
         }
         if (!successToFetchAllSamples) {
-            throw Exception("Fail to fetch samples from device")
+            throw QuanaException("Fail to fetch samples from device")
         }
         Timber.i("--- Done getting samples ---")
         Timber.d("Time to getAllScans: ${Calendar.getInstance().timeInMillis - startTime}")
