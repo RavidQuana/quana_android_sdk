@@ -19,65 +19,76 @@ class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext
             deviceAddress, listener)
     }
 
-    suspend fun startScan(): Boolean = suspendCoroutine<Boolean> { continuation ->
-            quanaDeviceCommunicator.startScan { success ->
-                continuation.resume(success)
+    suspend fun startScan(): MessageResult<Boolean> =
+        suspendCoroutine<MessageResult<Boolean>> { continuation ->
+            quanaDeviceCommunicator.startScan(object : ResponseCallback<Boolean> {
+                override fun onMessageResult(messageResult: MessageResult<Boolean>) {
+                    continuation.resume(messageResult)
+                }
+            })
+        }
+
+    suspend fun resetDevice(): MessageResult<Boolean> =
+        suspendCoroutine<MessageResult<Boolean>> { continuation ->
+            quanaDeviceCommunicator.resetDevice { object : ResponseCallback<Boolean> {
+                    override fun onMessageResult(messageResult: MessageResult<Boolean>) {
+                        continuation.resume(messageResult)
+                    }
+                }
             }
+        }
+
+    suspend fun quitScan(): MessageResult<Boolean> =
+        suspendCoroutine<MessageResult<Boolean>> { continuation ->
+            quanaDeviceCommunicator.quitScan { object : ResponseCallback<Boolean> {
+                    override fun onMessageResult(messageResult: MessageResult<Boolean>) {
+                        continuation.resume(messageResult)
+                    }
+                }
+            }
+        }
+
+    suspend fun getDeviceStatus(): MessageResult<DeviceStatus> =
+        suspendCoroutine<MessageResult<DeviceStatus>> { continuation ->
+            quanaDeviceCommunicator.getDeviceStatus(object : ResponseCallback<DeviceStatus> {
+                override fun onMessageResult(messageResult: MessageResult<DeviceStatus>) {
+                    continuation.resume(messageResult)
+                }
+            })
+        }
+
+
+    suspend fun getSample(index: Int): MessageResult<QuanaDeviceCommunicator.SampleInfo>  = suspendCoroutine<MessageResult<QuanaDeviceCommunicator.SampleInfo>> { continuation ->
+        quanaDeviceCommunicator.getSample(index.toUShort(), object : ResponseCallback<QuanaDeviceCommunicator.SampleInfo>{
+            override fun onMessageResult(messageResult: MessageResult<QuanaDeviceCommunicator.SampleInfo>) {
+                continuation.resume(messageResult)
+            }
+        })
     }
 
-    suspend fun resetDevice(): Boolean = suspendCoroutine<Boolean> { continuation ->
-            quanaDeviceCommunicator.resetDevice {success ->
-                continuation.resume(success)
-            }
+    suspend fun getScanResults(): MessageResult<QuanaDeviceCommunicator.ScanResult> =
+        suspendCoroutine<MessageResult<QuanaDeviceCommunicator.ScanResult>> { continuation ->
+            quanaDeviceCommunicator.getScanResults(object :
+                ResponseCallback<QuanaDeviceCommunicator.ScanResult> {
+                override fun onMessageResult(messageResult: MessageResult<QuanaDeviceCommunicator.ScanResult>) {
+                    continuation.resume(messageResult)
+                }
+            })
+        }
+
+    suspend fun takeFirmwareChunk(chunkId: UInt, address: UInt, chunk: ByteArray): MessageResult<UInt> = suspendCoroutine<MessageResult<UInt>> { continuation ->
+            quanaDeviceCommunicator.takeFirmwareChunk(chunkId, address, chunk, object : ResponseCallback<UInt>{
+                override fun onMessageResult(messageResult: MessageResult<UInt>) {
+                    continuation.resume(messageResult)
+                }
+            })
     }
 
-    suspend fun quitScan(): Boolean = suspendCoroutine<Boolean> { continuation ->
-            quanaDeviceCommunicator.quitScan {success ->
-                continuation.resume(success)
-            }
+    suspend fun goToFirmwareUpdate(): MessageResult<Boolean> = suspendCoroutine<MessageResult<Boolean>> { continuation ->
+            quanaDeviceCommunicator.goToFirmwareUpdate( object : ResponseCallback<Boolean>{
+                override fun onMessageResult(messageResult: MessageResult<Boolean>) {
+                    continuation.resume(messageResult)
+                }
+            })
     }
-
-    suspend fun getDeviceStatus(): DeviceStatus = suspendCoroutine<DeviceStatus> { continuation ->
-            quanaDeviceCommunicator.getDeviceStatus {deviceStatus ->
-                continuation.resume(deviceStatus)
-            }
-    }
-
-
-    suspend fun getSample(index: Int): Sample = suspendCoroutine<Sample> { continuation ->
-            quanaDeviceCommunicator.getSample(index.toUShort()){sensorCode,sampleData, rawData  ->
-
-                continuation.resume(Sample(sensorCode, sampleData, rawData))
-            }
-    }
-
-    suspend fun getScanResults(): ScanResult = suspendCoroutine<ScanResult> { continuation ->
-            quanaDeviceCommunicator.getScanResults{ amountOfSamples, scanStatus  ->
-                continuation.resume(ScanResult(amountOfSamples, scanStatus))
-            }
-    }
-
-    suspend fun takeFirmwareChunk(chunkId: UInt, address: UInt, chunk: ByteArray): UInt = suspendCoroutine<UInt> { continuation ->
-            quanaDeviceCommunicator.takeFirmwareChunk(chunkId, address, chunk){ chunkId  ->
-                continuation.resume(chunkId)
-            }
-    }
-
-    suspend fun goToFirmwareUpdate(): Boolean = suspendCoroutine<Boolean> { continuation ->
-            quanaDeviceCommunicator.goToFirmwareUpdate{ success  ->
-                continuation.resume(success)
-            }
-    }
-
-    data class Sample(
-        val sensorCode: UByte,
-        val sampleData: ByteArray,
-        val rawData: ByteArray
-    )
-
-    data class ScanResult(
-        val amountOfSamples: UShort,
-        val scanStatus: DeviceStatus
-    )
-
 }

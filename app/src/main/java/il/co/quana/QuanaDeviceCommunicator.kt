@@ -5,17 +5,46 @@ import android.os.Handler
 import android.os.HandlerThread
 import il.co.quana.protocol.*
 import timber.log.Timber
-import java.lang.RuntimeException
 import java.util.concurrent.atomic.AtomicInteger
 
 
+enum class ErrorType {
+    Timeout
+}
+
+interface ResponseCallback<T> {
+    fun onMessageResult(messageResult: MessageResult<T>)
+}
+
+data class MessageResult<T>(
+    val success: T?,
+    val error: ErrorType?
+)
+
+private class ResponseHandlerResult<T : ProtocolMessage.BaseReply> {
+
+    constructor(success: T) {
+        this.success = success
+        this.error = null
+    }
+
+    constructor(error: ErrorType) {
+        this.success = null
+        this.error = error
+    }
+
+    val success: T?
+    val error: ErrorType?
+}
+
 private interface ProtocolResponseHandler<T : ProtocolMessage.BaseReply> {
-    fun handleResponse(response: T)
+    fun handleResponse(result: ResponseHandlerResult<T>)
 }
 
 internal const val BINARY_LOG_TAG = "BIN"
 internal const val binaryLogEnabled = true
 internal const val NON_ACK_RETRY_COUNT = 3
+internal const val RESPONSE_TIMEOUT = 3_000L
 
 @ExperimentalUnsignedTypes
 internal fun ByteArray.binaryLog() = this.map { it.toUByte() }.joinToString(separator = ",")
@@ -52,6 +81,7 @@ class QuanaDeviceCommunicatorFactory {
     }
 }
 
+
 @ExperimentalUnsignedTypes
 class QuanaDeviceCommunicator(
 //    private val server: QuanaBluetoothServer,
@@ -70,7 +100,8 @@ class QuanaDeviceCommunicator(
     private val handler = Handler(handlerThread.looper)
 
     private var pendingRequest: ProtocolMessage? = null
-    private var pendingResponseHandler: ((ProtocolMessage.BaseReply) -> Unit)? = null
+    private var pendingResponseHandler: ((ResponseHandlerResult<ProtocolMessage.BaseReply>) -> Unit)? =
+        null
     private val requestAttemptsCounter = AtomicInteger()
 
     private val messageId = AtomicInteger(0)
@@ -124,7 +155,7 @@ class QuanaDeviceCommunicator(
         Timber.e("Device re-connection is not yet implemented")
         Timber.d("Resetting connection [%s]", reason)
 
-     //   client.dispose()
+        client.dispose()
 //        server.dispose()
     }
 
@@ -159,15 +190,23 @@ class QuanaDeviceCommunicator(
             return
         }
 
-        val message = messageFactory(messageId.getAndIncrement().toUShort())
+        val nextMessageId = messageId.getAndIncrement().toUShort()
+        val message = messageFactory(nextMessageId)
         pendingRequest = message
         pendingResponseHandler = {
-            responseHandler.handleResponse(it as T)
+            responseHandler.handleResponse(it as ResponseHandlerResult<T>)
         }
         requestAttemptsCounter.set(NON_ACK_RETRY_COUNT - 1)
         client.write(
             message
         )
+
+        handler.postDelayed({
+            if (pendingRequest?.id == nextMessageId) {
+                pendingRequest = null
+                pendingResponseHandler?.invoke(ResponseHandlerResult(ErrorType.Timeout))
+            }
+        }, RESPONSE_TIMEOUT)
     }
 
     private fun handleValidResponse(response: ProtocolMessage.BaseReply) {
@@ -185,7 +224,7 @@ class QuanaDeviceCommunicator(
         assertThread()
 
         this.pendingRequest = null
-        this.pendingResponseHandler?.invoke(response)
+        this.pendingResponseHandler?.invoke(ResponseHandlerResult(response))
         this.pendingResponseHandler = null
     }
 
@@ -205,13 +244,13 @@ class QuanaDeviceCommunicator(
                 }
             } else {
                 this.pendingRequest = null
-                this.pendingResponseHandler?.invoke(response)
+                this.pendingResponseHandler?.invoke(ResponseHandlerResult(response))
                 this.pendingResponseHandler = null
             }
         }
     }
 
-    fun startScan(callback: ((Boolean) -> Unit)? = null) {
+    fun startScan(callback: ResponseCallback<Boolean>? = null) {
         if (!assertIdle()) {
             return
         }
@@ -219,8 +258,8 @@ class QuanaDeviceCommunicator(
         sendMessage({ id ->
             ProtocolMessage.StartScan(id)
         }, object : ProtocolResponseHandler<ProtocolMessage.StartScanReply> {
-            override fun handleResponse(response: ProtocolMessage.StartScanReply) {
-                callback?.invoke(true)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.StartScanReply>) {
+                callback?.onMessageResult(MessageResult(response.success != null, response.error))
             }
         })
     }
@@ -233,7 +272,7 @@ class QuanaDeviceCommunicator(
         sendMessage({ id ->
             ProtocolMessage.ResetDevice(id)
         }, object : ProtocolResponseHandler<ProtocolMessage.ResetDeviceReply> {
-            override fun handleResponse(response: ProtocolMessage.ResetDeviceReply) {
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.ResetDeviceReply>) {
                 callback?.invoke(true)
             }
         })
@@ -248,7 +287,7 @@ class QuanaDeviceCommunicator(
         sendMessage({ id ->
             ProtocolMessage.QuitScan(id)
         }, object : ProtocolResponseHandler<ProtocolMessage.QuitScanReply> {
-            override fun handleResponse(response: ProtocolMessage.QuitScanReply) {
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.QuitScanReply>) {
                 callback?.invoke(true)
             }
         })
@@ -257,7 +296,7 @@ class QuanaDeviceCommunicator(
     fun setConfigurationParameter(
         parameterCode: Byte,
         values: ByteArray,
-        callback: ((Boolean) -> Unit)? = null
+        callback: ResponseCallback<Boolean>? = null
     ) {
         if (!assertIdle()) {
             return
@@ -270,15 +309,15 @@ class QuanaDeviceCommunicator(
                 values
             )
         }, object : ProtocolResponseHandler<ProtocolMessage.SetConfigurationParameterReply> {
-            override fun handleResponse(response: ProtocolMessage.SetConfigurationParameterReply) {
-                callback?.invoke(true)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.SetConfigurationParameterReply>) {
+                callback?.onMessageResult(MessageResult(response.success != null, response.error))
             }
         })
     }
 
     fun getConfigurationParameter(
         parameterCode: Byte,
-        callback: ((ByteArray) -> Unit)? = null
+        callback: ResponseCallback<ByteArray>? = null
     ) {
         if (!assertIdle()) {
             return
@@ -290,13 +329,13 @@ class QuanaDeviceCommunicator(
                 parameterCode.toUByte()
             )
         }, object : ProtocolResponseHandler<ProtocolMessage.GetConfigurationParameterReply> {
-            override fun handleResponse(response: ProtocolMessage.GetConfigurationParameterReply) {
-                callback?.invoke(response.parameterValues)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.GetConfigurationParameterReply>) {
+                callback?.onMessageResult(MessageResult(response.success?.parameterValues, response.error))
             }
         })
     }
 
-    fun getDeviceStatus(callback: ((DeviceStatus) -> Unit)? = null) {
+    fun getDeviceStatus(callback: ResponseCallback<DeviceStatus>? = null) {
         if (!assertIdle()) {
             return
         }
@@ -304,15 +343,17 @@ class QuanaDeviceCommunicator(
         sendMessage({ id ->
             ProtocolMessage.GetDeviceStatus(id)
         }, object : ProtocolResponseHandler<ProtocolMessage.GetDeviceStatusReply> {
-            override fun handleResponse(response: ProtocolMessage.GetDeviceStatusReply) {
-                callback?.invoke(response.deviceStatus)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.GetDeviceStatusReply>) {
+                callback?.onMessageResult(MessageResult(response.success?.deviceStatus, response.error))
             }
         })
     }
 
+    data class SampleInfo(val sensorCode: UByte, val sampleData: ByteArray, val rawData: ByteArray)
+
     fun getSample(
         sampleId: UShort,
-        callback: ((sensorCode: UByte, sampleData: ByteArray, rawData: ByteArray) -> Unit)? = null
+        callback: ResponseCallback<SampleInfo>? = null
     ) {
         if (!assertIdle()) {
             return
@@ -324,14 +365,18 @@ class QuanaDeviceCommunicator(
                 sampleId
             )
         }, object : ProtocolResponseHandler<ProtocolMessage.GetSampleReply> {
-            override fun handleResponse(response: ProtocolMessage.GetSampleReply) {
-                callback?.invoke(response.sensorCode, response.sampleData, response.data)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.GetSampleReply>) {
+                response.success?.let {
+                    callback?.onMessageResult(MessageResult(SampleInfo(it.sensorCode, it.sampleData, it.data), null))
+                } ?: callback?.onMessageResult(MessageResult(null, response.error))
             }
         })
     }
 
+    data class ScanResult(val amountOfSamples: UShort, val scanStatus: DeviceStatus)
+
     fun getScanResults(
-        callback: ((amountOfSamples: UShort, scanStatus: DeviceStatus) -> Unit)? = null
+        callback: ResponseCallback<ScanResult>? = null
     ) {
         if (!assertIdle()) {
             return
@@ -340,15 +385,17 @@ class QuanaDeviceCommunicator(
         sendMessage({ id ->
             ProtocolMessage.GetScanResults(id)
         }, object : ProtocolResponseHandler<ProtocolMessage.GetScanResultsReply> {
-            override fun handleResponse(response: ProtocolMessage.GetScanResultsReply) {
-                callback?.invoke(response.amountOfSamples, response.scanStatus)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.GetScanResultsReply>) {
+                response.success?.let {
+                    callback?.onMessageResult(MessageResult(ScanResult(it.amountOfSamples, it.scanStatus), null))
+                } ?: callback?.onMessageResult(MessageResult(null, response.error))
             }
         })
     }
 
     fun takeFirmwareChunk(
         chunkId: UInt, address: UInt, chunk: ByteArray,
-        callback: ((chunkId: UInt) -> Unit)? = null
+        callback: ResponseCallback<UInt>? = null
     ) {
         if (!assertIdle()) {
             return
@@ -357,15 +404,17 @@ class QuanaDeviceCommunicator(
         sendMessage({ id ->
             ProtocolMessage.TakeFirmwareChunk(id, chunkId, address, chunk)
         }, object : ProtocolResponseHandler<ProtocolMessage.TakeFirmwareChunkReply> {
-            override fun handleResponse(response: ProtocolMessage.TakeFirmwareChunkReply) {
-                callback?.invoke(response.chunkId)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.TakeFirmwareChunkReply>) {
+                callback?.onMessageResult(MessageResult(response.success?.chunkId, response.error))
             }
         })
     }
 
+    data class ChunkCheckResult(val chunkId: UInt, val ack: UByte)
+
     fun checkFirmwareChunk(
         chunkId: UInt,
-        callback: ((chunkId: UInt, ack: UByte) -> Unit)? = null
+        callback: ResponseCallback<ChunkCheckResult>? = null
     ) {
         if (!assertIdle()) {
             return
@@ -374,13 +423,15 @@ class QuanaDeviceCommunicator(
         sendMessage({ id ->
             ProtocolMessage.CheckFirmwareChunk(id, chunkId)
         }, object : ProtocolResponseHandler<ProtocolMessage.CheckFirmwareChunkReply> {
-            override fun handleResponse(response: ProtocolMessage.CheckFirmwareChunkReply) {
-                callback?.invoke(response.chunkId, response.ack)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.CheckFirmwareChunkReply>) {
+                response.success?.let {
+                    callback?.onMessageResult(MessageResult(ChunkCheckResult(it.chunkId, it.ack), null))
+                } ?: callback?.onMessageResult(MessageResult(null, response.error))
             }
         })
     }
 
-    fun goToFirmwareUpdate(callback: ((Boolean) -> Unit)? = null) {
+    fun goToFirmwareUpdate(callback: ResponseCallback<Boolean>? = null) {
         if (!assertIdle()) {
             return
         }
@@ -388,8 +439,8 @@ class QuanaDeviceCommunicator(
         sendMessage({ id ->
             ProtocolMessage.GoToFirmwareUpdate(id)
         }, object : ProtocolResponseHandler<ProtocolMessage.GoToFirmwareUpdateReply> {
-            override fun handleResponse(response: ProtocolMessage.GoToFirmwareUpdateReply) {
-                callback?.invoke(true)
+            override fun handleResponse(response: ResponseHandlerResult<ProtocolMessage.GoToFirmwareUpdateReply>) {
+                callback?.onMessageResult(MessageResult(response.success != null, response.error))
             }
         })
     }

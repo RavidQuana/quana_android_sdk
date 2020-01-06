@@ -10,12 +10,13 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import java.io.ByteArrayOutputStream
 import com.google.gson.Gson
+import il.co.quana.QuanaDeviceCommunicator
 
 
 class SampleRepository(val context: Context,  val apiService: ApiService) {
 
     suspend fun sendSample(
-        samples: List<CoroutineQuanaDeviceCommunicator.Sample>,
+        samples: List<QuanaDeviceCommunicator.SampleInfo>,
         tagInfoList: MutableSet<TagInfo>,
         note: String?,
         brand: String?,

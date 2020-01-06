@@ -212,6 +212,21 @@ class TestDeviceActivity : AppCompatActivity() {
                         TestDeviceViewModel.ScreenStatusID.SERVER_REQUEST_FAIL ->{
                             handleServerResponse(it.resultData.toString(), emptyList())
                         }
+                        TestDeviceViewModel.ScreenStatusID.DEVICE_SCAN_RESULT_ERROR ->{
+                            hideAll()
+                            scanServerResult.visibility = View.VISIBLE
+                            scanResultText.text = "DEVICE GET SCAN RESULT ERROR"
+                        }
+                        TestDeviceViewModel.ScreenStatusID.DEVICE_FETCH_SAMPLES_ERROR ->{
+                            hideAll()
+                            scanServerResult.visibility = View.VISIBLE
+                            scanResultText.text = "DEVICE FETCH SAMPLES ERROR"
+                        }
+                        TestDeviceViewModel.ScreenStatusID.DEVICE_SCAN_STATUS_ERROR ->{
+                            hideAll()
+                            scanServerResult.visibility = View.VISIBLE
+                            scanResultText.text = "DEVICE GET SCAN STATUS ERROR"
+                        }
                     }
                 }
             }
