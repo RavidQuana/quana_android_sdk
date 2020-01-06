@@ -183,7 +183,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
                             }else{
                                 screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.SERVER_REQUEST_FAIL, serverResult.message))
                             }
-                        }catch (ex: Exception){
+                        }catch (ex: QuanaException){
                             screenState.postValue(ScreenState.UpdateScreenState(ScreenStatusID.DEVICE_FETCH_SAMPLES_ERROR, ex.message))
                         }
                     }
