@@ -155,7 +155,7 @@ class QuanaDeviceCommunicator(
         Timber.e("Device re-connection is not yet implemented")
         Timber.d("Resetting connection [%s]", reason)
 
-        client.dispose()
+        //client.dispose()
 //        server.dispose()
     }
 
