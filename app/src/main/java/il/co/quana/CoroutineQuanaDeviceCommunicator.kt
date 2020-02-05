@@ -19,6 +19,10 @@ class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext
             deviceAddress, listener)
     }
 
+    fun stopConnection(){
+        quanaDeviceCommunicator.dispose()
+    }
+
     suspend fun startScan(): MessageResult<Boolean> =
         suspendCoroutine<MessageResult<Boolean>> { continuation ->
             quanaDeviceCommunicator.startScan(object : ResponseCallback<Boolean> {

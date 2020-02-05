@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.HandlerThread
 import il.co.quana.protocol.*
+import io.reactivex.disposables.Disposable
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -88,7 +89,7 @@ class QuanaDeviceCommunicator(
     private val client: QuanaBluetoothClient,
     private val callback: QuanaDeviceCommunicatorCallback?
 ) :
-    QuanaBluetoothClientCallback {
+    QuanaBluetoothClientCallback, Disposable {
 
     init {
         client.callback = this
@@ -249,6 +250,12 @@ class QuanaDeviceCommunicator(
             }
         }
     }
+
+    override fun isDisposed() = client.isDisposed
+
+    override fun dispose() = client.dispose()
+
+    //============= Start of messages section ===================
 
     fun startScan(callback: ResponseCallback<Boolean>? = null) {
         if (!assertIdle()) {

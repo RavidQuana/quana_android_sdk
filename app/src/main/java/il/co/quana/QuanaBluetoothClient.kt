@@ -154,7 +154,7 @@ class QuanaBluetoothClient(val device: RxBleDevice) :
         val bytes = message.toByteArray()
 
         writabeCharacteristic?.let {
-            connection!!.writeCharacteristic(it,bytes).subscribe(
+            connection?.writeCharacteristic(it,bytes)?.subscribe(
                 { bytes ->
                     Timber.i("${bytes.size} written")
                 },

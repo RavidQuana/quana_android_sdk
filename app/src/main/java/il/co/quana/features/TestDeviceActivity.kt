@@ -278,4 +278,11 @@ class TestDeviceActivity : AppCompatActivity() {
             viewModel.removeTagInfo(tagInfo)
         }
     }
+
+    override fun onDestroy() {
+        viewModel.cancelDeviceConnection()
+        super.onDestroy()
+    }
+
+
 }
