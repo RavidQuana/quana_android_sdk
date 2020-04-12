@@ -319,7 +319,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
 
     fun cancelDeviceConnection() {
         if(::quanaDeviceCommunicator.isInitialized) {
-            quanaDeviceCommunicator.stopConnection()
+            quanaDeviceCommunicator.closeConnection()
         }
     }
 
