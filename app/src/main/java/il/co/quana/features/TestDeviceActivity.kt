@@ -88,6 +88,9 @@ class TestDeviceActivity : AppCompatActivity() {
                 TestDeviceViewModel.TimerState.GONE ->{
                     hideTimer()
                 }
+                TestDeviceViewModel.TimerState.START_TIMER -> {
+                    startTimer()
+                }
             }
         }
     }
@@ -163,7 +166,7 @@ class TestDeviceActivity : AppCompatActivity() {
         }
 
         startScanBtn.setOnClickListener {
-            viewModel.startScan()
+            viewModel.tryStartScan()
         }
 
     }
@@ -235,6 +238,10 @@ class TestDeviceActivity : AppCompatActivity() {
 
     private fun showTimer() {
         testActTimer.visibility = View.VISIBLE
+        testActTimer.resetTimer()
+    }
+
+    private fun startTimer(){
         testActTimer.startTimer()
     }
 

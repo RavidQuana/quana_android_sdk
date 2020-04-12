@@ -83,4 +83,9 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         }
         return String.format("%02d : %02d", minuts, secs)
     }
+
+    fun resetTimer() {
+        stopTimer()
+        timerViewTimeText.text = formattedTimeForTimerDisplay(0)
+    }
 }
