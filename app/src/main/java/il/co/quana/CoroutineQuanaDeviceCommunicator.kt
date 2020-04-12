@@ -19,7 +19,7 @@ class CoroutineQuanaDeviceCommunicator(deviceAddress: String, applicationContext
             deviceAddress, listener)
     }
 
-    fun stopConnection(){
+    fun closeConnection(){
         quanaDeviceCommunicator.dispose()
     }
 

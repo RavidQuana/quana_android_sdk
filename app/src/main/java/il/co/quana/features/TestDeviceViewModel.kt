@@ -9,7 +9,6 @@ import il.co.quana.data.SampleRepository
 import il.co.quana.model.SampleStatus
 import il.co.quana.model.TagInfo
 import il.co.quana.protocol.DeviceStatus
-import il.co.quana.protocol.ProtocolMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -267,7 +266,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
 
     fun cancelDeviceConnection() {
         if(::quanaDeviceCommunicator.isInitialized) {
-            quanaDeviceCommunicator.stopConnection()
+            quanaDeviceCommunicator.closeConnection()
         }
     }
 

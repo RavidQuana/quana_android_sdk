@@ -89,7 +89,7 @@ class QuanaDeviceCommunicator(
     private val client: QuanaBluetoothClient,
     private val callback: QuanaDeviceCommunicatorCallback?
 ) :
-    QuanaBluetoothClientCallback, Disposable {
+    QuanaBluetoothClientCallback {
 
     init {
         client.callback = this
@@ -251,9 +251,11 @@ class QuanaDeviceCommunicator(
         }
     }
 
-    override fun isDisposed() = client.isDisposed
 
-    override fun dispose() = client.dispose()
+
+    fun isDisposed() = client.isDisposed
+
+    fun dispose() = client.dispose()
 
     //============= Start of messages section ===================
 
