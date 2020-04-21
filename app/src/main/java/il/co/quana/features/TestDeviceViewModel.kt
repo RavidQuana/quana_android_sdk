@@ -128,6 +128,7 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
     private suspend fun startScan(){
         Timber.i("startScan")
         val messageResult = quanaDeviceCommunicator.startScan()
+        Timber.i("startScanRetryCout : $startScanRetryCout")
         Timber.i("Scan is success : ${(messageResult.success != null && messageResult.success)}")
         if (messageResult.success != null && messageResult.success){
             //TODO == notify about scan started sucsess
@@ -196,7 +197,8 @@ class TestDeviceViewModel(private val sampleRepository: SampleRepository, applic
 
 
     fun sendData(){
-        timerState.postValue(TimerState.VISIBLE)
+//        timerState.postValue(TimerState.VISIBLE)
+        timerState.postValue(TimerState.START_TIMER)
         progressData.startProgress()
         viewModelScope.launch {
             launch(Dispatchers.IO){

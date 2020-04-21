@@ -242,6 +242,7 @@ class TestDeviceActivity : AppCompatActivity() {
     }
 
     private fun startTimer(){
+        showTimer()
         testActTimer.startTimer()
     }
 
